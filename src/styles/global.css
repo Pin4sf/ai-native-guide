@@ -1,0 +1,438 @@
+@import 'tailwindcss';
+@plugin '@tailwindcss/typography';
+
+/* Fonts */
+@import '@fontsource/newsreader/400.css';
+@import '@fontsource/newsreader/400-italic.css';
+@import '@fontsource/newsreader/600.css';
+@import '@fontsource/newsreader/700.css';
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/inter/700.css';
+@import '@fontsource/jetbrains-mono/400.css';
+@import '@fontsource/jetbrains-mono/500.css';
+
+/* ─── Design Tokens ────────────────────────────────────── */
+@theme {
+  --font-body: 'Newsreader', Georgia, 'Times New Roman', serif;
+  --font-heading: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Code', monospace;
+
+  --color-cream: #FAFAF7;
+  --color-cream-dark: #0F0F0E;
+  --color-surface: #F0EDE8;
+  --color-surface-dark: #1A1918;
+  --color-text: #1A1A1A;
+  --color-text-dark: #EDEDED;
+  --color-muted: #6B6560;
+  --color-muted-dark: #9A9590;
+  --color-accent: #2563EB;
+  --color-accent-dark: #60A5FA;
+  --color-border: #E5E0DA;
+  --color-border-dark: #2A2826;
+  --color-code-bg: #F5F2ED;
+  --color-code-bg-dark: #161514;
+
+  /* Callout colors */
+  --color-tip-bg: #FEF9EC;
+  --color-tip-border: #D4A017;
+  --color-note-bg: #EEF2FF;
+  --color-note-border: #6366F1;
+  --color-warning-bg: #FFF4ED;
+  --color-warning-border: #EA580C;
+  --color-danger-bg: #FEF2F2;
+  --color-danger-border: #DC2626;
+}
+
+/* ─── Base ──────────────────────────────────────────────── */
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 6rem;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--color-cream);
+  color: var(--color-text);
+  font-size: 19px;
+  line-height: 1.75;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.dark body {
+  background-color: var(--color-cream-dark);
+  color: var(--color-text-dark);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+code, pre, kbd, samp {
+  font-family: var(--font-mono);
+}
+
+/* ─── Reading Progress Bar (CSS-only) ──────────────────── */
+.reading-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: transparent;
+  z-index: 100;
+}
+
+.reading-progress::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 3px;
+  width: 100%;
+  background: var(--color-accent);
+  transform-origin: left;
+  scale: var(--scroll-progress, 0) 1;
+  animation: reading-progress linear;
+  animation-timeline: scroll();
+}
+
+@keyframes reading-progress {
+  from { scale: 0 1; }
+  to { scale: 1 1; }
+}
+
+/* ─── Prose Overrides ──────────────────────────────────── */
+.prose {
+  --tw-prose-body: var(--color-text);
+  --tw-prose-headings: var(--color-text);
+  --tw-prose-links: var(--color-accent);
+  --tw-prose-code: var(--color-text);
+  --tw-prose-pre-bg: var(--color-code-bg);
+  font-family: var(--font-body);
+  font-size: 19px;
+  line-height: 1.75;
+  max-width: 65ch;
+}
+
+.dark .prose {
+  --tw-prose-body: var(--color-text-dark);
+  --tw-prose-headings: var(--color-text-dark);
+  --tw-prose-links: var(--color-accent-dark);
+  --tw-prose-code: var(--color-text-dark);
+  --tw-prose-pre-bg: var(--color-code-bg-dark);
+}
+
+.prose h2 {
+  font-family: var(--font-heading);
+  font-size: 1.625rem;
+  margin-top: 2.5em;
+  margin-bottom: 0.75em;
+  padding-bottom: 0.35em;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.dark .prose h2 {
+  border-bottom-color: var(--color-border-dark);
+}
+
+.prose h3 {
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
+  margin-top: 2em;
+  margin-bottom: 0.5em;
+}
+
+.prose a {
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  transition: color 0.15s ease;
+}
+
+.prose a:hover {
+  text-decoration-thickness: 2px;
+}
+
+/* Code blocks */
+.prose pre {
+  border-radius: 0.625rem;
+  padding: 1.25rem;
+  font-size: 0.875rem;
+  line-height: 1.7;
+  border: 1px solid var(--color-border);
+  position: relative;
+  overflow-x: auto;
+}
+
+.dark .prose pre {
+  border-color: var(--color-border-dark);
+}
+
+.prose :not(pre) > code {
+  background-color: var(--color-code-bg);
+  padding: 0.15em 0.35em;
+  border-radius: 0.25rem;
+  font-size: 0.875em;
+  font-weight: 500;
+}
+
+.dark .prose :not(pre) > code {
+  background-color: var(--color-code-bg-dark);
+}
+
+/* Tables */
+.prose table {
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.prose th {
+  font-family: var(--font-heading);
+  font-weight: 600;
+}
+
+/* Blockquotes */
+.prose blockquote {
+  border-left-color: var(--color-accent);
+  font-style: italic;
+  color: var(--color-muted);
+}
+
+.dark .prose blockquote {
+  color: var(--color-muted-dark);
+}
+
+/* ─── Callout Components ───────────────────────────────── */
+.callout {
+  border-left: 4px solid;
+  border-radius: 0 0.5rem 0.5rem 0;
+  padding: 1rem 1.25rem;
+  margin: 1.5rem 0;
+  font-size: 0.925rem;
+  line-height: 1.6;
+}
+
+.callout-title {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  margin-bottom: 0.35rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.callout-tip {
+  background-color: var(--color-tip-bg);
+  border-color: var(--color-tip-border);
+}
+.callout-tip .callout-title { color: var(--color-tip-border); }
+
+.callout-note {
+  background-color: var(--color-note-bg);
+  border-color: var(--color-note-border);
+}
+.callout-note .callout-title { color: var(--color-note-border); }
+
+.callout-warning {
+  background-color: var(--color-warning-bg);
+  border-color: var(--color-warning-border);
+}
+.callout-warning .callout-title { color: var(--color-warning-border); }
+
+.callout-danger {
+  background-color: var(--color-danger-bg);
+  border-color: var(--color-danger-border);
+}
+.callout-danger .callout-title { color: var(--color-danger-border); }
+
+.dark .callout-tip { background-color: rgba(212, 160, 23, 0.08); }
+.dark .callout-note { background-color: rgba(99, 102, 241, 0.08); }
+.dark .callout-warning { background-color: rgba(234, 88, 12, 0.08); }
+.dark .callout-danger { background-color: rgba(220, 38, 38, 0.08); }
+
+/* ─── Sidenotes (Tufte-style) ──────────────────────────── */
+.sidenote-number {
+  counter-increment: sidenote-counter;
+}
+
+.sidenote-number::after {
+  content: counter(sidenote-counter);
+  font-size: 0.7em;
+  vertical-align: super;
+  line-height: 0;
+  color: var(--color-accent);
+  cursor: pointer;
+  font-family: var(--font-heading);
+  font-weight: 600;
+}
+
+.sidenote-toggle { display: none; }
+
+.sidenote {
+  float: right;
+  clear: right;
+  margin-right: -50%;
+  width: 42%;
+  margin-top: 0.25rem;
+  margin-bottom: 1rem;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--color-muted);
+  position: relative;
+  padding-left: 0.75rem;
+  border-left: 2px solid var(--color-border);
+}
+
+.dark .sidenote {
+  color: var(--color-muted-dark);
+  border-left-color: var(--color-border-dark);
+}
+
+.sidenote::before {
+  content: counter(sidenote-counter) '. ';
+  font-size: 0.8em;
+  font-weight: 600;
+  color: var(--color-accent);
+  font-family: var(--font-heading);
+}
+
+/* Mobile: collapse sidenotes to toggleable inline */
+@media (max-width: 1200px) {
+  .sidenote {
+    display: none;
+    float: none;
+    width: 95%;
+    margin: 0.75rem auto;
+    padding: 0.75rem 1rem;
+    background-color: var(--color-surface);
+    border-radius: 0.5rem;
+    border-left: 3px solid var(--color-accent);
+  }
+
+  .dark .sidenote {
+    background-color: var(--color-surface-dark);
+  }
+
+  .sidenote-toggle:checked + .sidenote {
+    display: block;
+  }
+
+  .sidenote-number {
+    cursor: pointer;
+  }
+}
+
+/* ─── Scroll-Reveal Animations ─────────────────────────── */
+.reveal {
+  animation: reveal-in linear both;
+  animation-timeline: view();
+  animation-range: entry 0% entry 30%;
+}
+
+@keyframes reveal-in {
+  from {
+    opacity: 0;
+    transform: translateY(1.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ─── Card Styles ──────────────────────────────────────── */
+.guide-card {
+  background: white;
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.guide-card:hover {
+  border-color: var(--color-accent);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.08);
+  transform: translateY(-2px);
+}
+
+.dark .guide-card {
+  background: var(--color-surface-dark);
+  border-color: var(--color-border-dark);
+}
+
+.dark .guide-card:hover {
+  border-color: var(--color-accent-dark);
+  box-shadow: 0 4px 12px rgba(96, 165, 250, 0.08);
+}
+
+/* Difficulty badges */
+.badge {
+  font-family: var(--font-heading);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.2em 0.6em;
+  border-radius: 9999px;
+}
+
+.badge-beginner { background: #DCFCE7; color: #166534; }
+.badge-intermediate { background: #FEF3C7; color: #92400E; }
+.badge-advanced { background: #FEE2E2; color: #991B1B; }
+
+.dark .badge-beginner { background: rgba(22, 101, 52, 0.2); color: #86EFAC; }
+.dark .badge-intermediate { background: rgba(146, 64, 14, 0.2); color: #FDE68A; }
+.dark .badge-advanced { background: rgba(153, 27, 27, 0.2); color: #FCA5A5; }
+
+/* Tag pills */
+.tag-pill {
+  font-family: var(--font-heading);
+  font-size: 0.725rem;
+  font-weight: 500;
+  padding: 0.15em 0.55em;
+  border-radius: 9999px;
+  background: var(--color-surface);
+  color: var(--color-muted);
+  transition: all 0.15s ease;
+}
+
+.tag-pill:hover {
+  background: var(--color-accent);
+  color: white;
+}
+
+.dark .tag-pill {
+  background: var(--color-surface-dark);
+  color: var(--color-muted-dark);
+}
+
+.dark .tag-pill:hover {
+  background: var(--color-accent-dark);
+  color: var(--color-cream-dark);
+}
+
+/* ─── Utility ──────────────────────────────────────────── */
+.content-column {
+  max-width: 65ch;
+}
+
+.full-layout {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Selection color */
+::selection {
+  background-color: rgba(37, 99, 235, 0.15);
+}
+
+.dark ::selection {
+  background-color: rgba(96, 165, 250, 0.2);
+}

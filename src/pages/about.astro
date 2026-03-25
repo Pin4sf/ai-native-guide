@@ -1,0 +1,71 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="About" description="About the AI Native Guide project and how to contribute.">
+  <article class="pt-12 pb-20 px-6">
+    <div class="prose prose-lg dark:prose-invert mx-auto">
+      <h1>About AI Native Guide</h1>
+
+      <p>
+        <strong>AI Native Guide</strong> is an open-source knowledge base for mastering AI coding tools.
+        Built by practitioners, for practitioners — every guide is battle-tested and actionable.
+      </p>
+
+      <h2>Philosophy</h2>
+      <blockquote>
+        Every token should earn its place in the context window. If it doesn't help the agent reason better, it's waste.
+      </blockquote>
+
+      <p>
+        AI coding tools like Claude Code, Cursor, and Copilot are transforming how we write software.
+        But most developers use only a fraction of their capabilities — and waste enormous amounts of tokens,
+        money, and context on avoidable inefficiencies.
+      </p>
+
+      <p>
+        This project exists to change that. We document the best practices, share the hard-won lessons,
+        and build a community of AI-native developers who get the most out of every tool.
+      </p>
+
+      <h2>Who is this for?</h2>
+      <ul>
+        <li><strong>Developers</strong> using AI coding assistants who want to be more effective</li>
+        <li><strong>Teams</strong> looking to standardize AI tool usage and reduce costs</li>
+        <li><strong>Curious builders</strong> who want to understand how context windows, token optimization, and agent workflows actually work</li>
+      </ul>
+
+      <h2>How to Contribute</h2>
+
+      <h3>Quick Fix (30 seconds)</h3>
+      <p>
+        Every guide has a <strong>"Suggest Edit"</strong> link at the bottom. Click it — you'll land in GitHub's
+        web editor. Fix a typo, add a tip, update outdated info. Submit a PR right from your browser.
+      </p>
+
+      <h3>Write a Guide (10 minutes)</h3>
+      <ol>
+        <li>Fork the <a href="https://github.com/Pin4sf/ai-native-guide">repository</a></li>
+        <li>Copy the template from <code>CONTRIBUTING.md</code></li>
+        <li>Write your guide as an MDX file in <code>src/content/guides/</code></li>
+        <li>Submit a pull request — Vercel automatically generates a preview URL</li>
+      </ol>
+
+      <h3>Request a Topic (1 minute)</h3>
+      <p>
+        Open a <a href="https://github.com/Pin4sf/ai-native-guide/issues/new">GitHub Issue</a>
+        describing what you'd like covered. The community can pick it up.
+      </p>
+
+      <h2>Credits</h2>
+      <p>
+        Created by <strong>Shivansh Fulper</strong>. Inspired by the work of Boris Cherny (Claude Code creator),
+        the RTK community, and every developer who shares their hard-won knowledge.
+      </p>
+      <p>
+        Built with <a href="https://astro.build">Astro</a>, <a href="https://tailwindcss.com">Tailwind CSS</a>,
+        and the philosophy of <a href="https://edwardtufte.github.io/tufte-css/">Tufte CSS</a>.
+      </p>
+    </div>
+  </article>
+</BaseLayout>

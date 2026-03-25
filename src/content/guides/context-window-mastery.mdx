@@ -1,0 +1,219 @@
+---
+title: "Context Window = Your Agent's RAM"
+description: "Your AI agent's context window is its working memory. Learn to manage it like a pro with /clear, /compact, subagents, and strategic context engineering."
+author: "Shivansh Fulper"
+tags: ["context-management", "claude-code", "productivity"]
+difficulty: "intermediate"
+publishedDate: 2026-03-25
+featured: false
+series:
+  name: "Token Optimization"
+  order: 2
+  total: 4
+---
+
+# Context Window = Your Agent's RAM
+
+Boris Cherny, creator of Claude Code, said it best: *"Context window is the most important resource to manage."*
+
+Every token in context costs money, quality, and speed. Every decision -- CLAUDE.md length, subagent usage, `/clear` frequency -- should be viewed through this lens.
+
+## The Visual Breakdown
+
+Your AI coding agent has a fixed context window. Here is what fills it:
+
+```
+200K token context window (Claude Sonnet 4.6)
+
+┌──────────────────────────────────────────────────────┐
+│ System prompt + CLAUDE.md              (~8-20K)      │
+│ MCP tool schemas (if 10+ servers)      (~5-30K)      │
+│ Conversation history                   (~20-50K)     │
+│ Tool outputs (git, ls, cat, test, etc) (~50-100K) ←  │ THE BIGGEST WASTE
+│ Remaining for reasoning                (~0-37K)      │
+└──────────────────────────────────────────────────────┘
+
+When reasoning space shrinks, output quality DROPS.
+This is called "context rot" — measured degradation past ~50K tokens.
+```
+
+Notice how tool output can consume 50-100K tokens. That leaves as little as zero for actual reasoning. This is the core problem.
+
+## Three Reasons to Care
+
+**1. Quality degrades with noise.** LLM performance drops as context fills with irrelevant data. JetBrains Research (Dec 2025) showed that SE agent turns heavily skew toward "observation" (tool output), and masking just those yields huge quality improvements without losing the reasoning chain.[^1]
+
+[^1]: JetBrains Research Blog, "Efficient Context Management," December 2025. The technique of observation masking preserves agent actions and reasoning while compressing tool outputs.
+
+**2. Money adds up fast.** Claude Sonnet 4.6 costs $3/M input and $15/M output tokens. A 10-developer team wastes roughly $1,750/month on unnecessary tokens. A single `git diff` can burn 21,500 tokens.
+
+**3. Speed -- more tokens = slower responses.** A 100K token prompt takes approximately 11.5s for a response. The same prompt with caching: 2.4s. That is a 5x improvement.
+
+## Where Tokens Get Wasted
+
+A typical 2-hour session runs ~60 CLI calls, producing ~114,000 tokens. Here is the breakdown:
+
+| Source | Tokens/Session | % of Total | What's Noise |
+|--------|---------------|------------|-------------|
+| File reads (`cat`, `read`) | ~40,000 | 35% | Full files when only 20 lines matter |
+| Test output | ~25,000 | 22% | Progress bars, passing tests |
+| Search results (`grep`, `rg`) | ~16,000 | 14% | Duplicate matches, irrelevant files |
+| Git operations (`diff`, `log`) | ~15,500 | 14% | ANSI codes, boilerplate, unchanged hunks |
+| Build/lint output | ~6,000 | 5% | Boilerplate headers, progress indicators |
+| Directory listings | ~5,000 | 4% | Permission strings, timestamps, owner info |
+| Other | ~6,500 | 6% | -- |
+| **Total** | **~114,000** | **100%** | |
+
+**89% of this is noise.** The agent needs the information, not the formatting.
+
+## Essential Commands
+
+These are your primary tools for context management in Claude Code.
+
+| Command | When to Use | Token Impact |
+|---------|------------|-------------|
+| `/clear` | Between unrelated tasks | Frees 100% of conversation context |
+| `/compact` | Phase transitions | Summarizes old context, frees ~60-80% |
+| `/compact Focus on [X]` | When you know what is next | Preserves only relevant context |
+| `/btw [question]` | Quick side questions | **Zero context cost** -- answer in dismissible overlay |
+| `Esc` | Stop mid-action | Prevents wasted tokens on wrong path |
+| `Esc+Esc` | Checkpoint menu | Restore code, conversation, or both |
+| `/rewind` | Go back to checkpoint | Undo without wasting correction tokens |
+| `/context` | See what is consuming space | Diagnostic view of context budget |
+
+## When to /clear
+
+This is the single most impactful habit most people skip. **Clear when:**
+
+- Switching between unrelated tasks (always)
+- After completing a feature, before starting the next one
+- After 2 failed corrections (rewrite the prompt instead of correcting in-context)
+- When context feels "polluted" with failed approaches
+- After a large exploration or research phase
+
+**Why it matters:** Without `/clear`, every new task carries the baggage of all previous tasks. A 5-task session without clearing means task 5 has only ~20% of context available for reasoning.[^2]
+
+[^2]: This is the most common anti-pattern in AI-assisted coding. Each uncleared task leaves behind 20-40K tokens of stale context that actively degrades output quality.
+
+Make it a reflex. Finish a task, `/clear`, start the next one fresh.
+
+## When to /compact
+
+Use `/compact` at natural phase transitions, not just when the context is full.
+
+- Research to Planning transition
+- Planning to Implementation transition
+- Debugging to New feature transition
+- After a large file read you no longer need
+- When context is ~60-70% full
+
+### Custom Instructions Make Compaction Smarter
+
+Tell `/compact` what to preserve:
+
+```
+/compact Focus on implementing the auth middleware next.
+Preserve: modified file list, test commands, error messages from the last 3 turns.
+```
+
+Or set permanent rules in your CLAUDE.md:
+
+```markdown
+# Compact instructions
+When compacting, always preserve: full list of modified files, any test
+commands, and recent error messages.
+```
+
+### What Survives Compaction
+
+| Survives | Lost |
+|----------|------|
+| CLAUDE.md instructions | Intermediate reasoning |
+| TodoWrite task lists | File contents previously read |
+| Memory files (MEMORY.md) | Full conversation history |
+| Git state | Tool call details |
+| Active checkpoint | Exact code snippets discussed |
+
+**Mitigation:** Write important context to files before compacting. Use `@file` references in subsequent prompts to point Claude at preserved material.
+
+## Selective Compaction
+
+Instead of all-or-nothing compaction, you can compress just part of the conversation.
+
+1. Press `Esc+Esc`
+2. Select a checkpoint message
+3. Choose **"Summarize from here"**
+4. Only the selected portion gets compressed
+
+This lets you keep the most recent work in full detail while compressing older exploration. It is especially useful when you did 30 minutes of research and now want to preserve only the conclusions while freeing the context consumed by the research process.
+
+## Auto-Compact Configuration
+
+By default, auto-compact triggers at ~95% capacity. **That is too late.** Quality has already degraded by that point.
+
+Set it to trigger at 60%:
+
+```bash
+export CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=60
+```
+
+Or in `settings.json`:
+
+```json
+{
+  "env": {
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "60"
+  }
+}
+```
+
+**Why 60% instead of 75%?** Anthropic's latest docs recommend lower thresholds. At 60%, compaction happens proactively -- your agent always has room to reason. At 95%, it is already struggling.[^3]
+
+[^3]: Think of it like RAM on a computer. You do not wait until 95% utilization to start swapping. The performance cliff happens well before you hit the limit.
+
+## Subagents -- The Secret Weapon
+
+Every subagent gets its **own 200K context window**. Use them to offload work that would pollute your main session.
+
+```
+Spawn a subagent to investigate how the authentication system handles
+token refresh. Report back with: affected files, current behavior,
+and recommended changes. Keep your answer under 500 words.
+```
+
+The subagent reads 20 files, searches 50 patterns, generates 100K of context internally. Your main session only receives the 500-word summary.
+
+This is the context management equivalent of running a process in a separate memory space.
+
+### Route Subagents to Cheaper Models
+
+Exploration and file reading do not need Opus-level reasoning. Route subagents to Haiku:
+
+```bash
+export CLAUDE_CODE_SUBAGENT_MODEL=haiku
+```
+
+Haiku is roughly 3x cheaper for the same context window. The subagent does the grunt work; your main session (on Sonnet or Opus) does the reasoning on the distilled output.
+
+### When to Use Subagents
+
+- **Codebase exploration:** "Find all files related to authentication"
+- **Research tasks:** "How does the payment system handle refunds?"
+- **Verbose analysis:** "Analyze test coverage across the `src/` directory"
+- **Documentation reads:** "Summarize the API docs in `docs/api/`"
+
+The pattern is always the same: offload work that generates lots of context, receive back a concise summary.
+
+## Putting It All Together
+
+Here is a mental model for a productive multi-task session:
+
+1. **Start task.** Context is clean.
+2. **Research phase.** Use subagents for exploration. Main context stays lean.
+3. **Plan.** `/compact Focus on implementing X.`
+4. **Implement.** Full context available for reasoning.
+5. **Test and fix.** Use `Esc` aggressively if Claude goes off track.
+6. **Finish.** `/clear`.
+7. **Start next task.** Repeat from step 1.
+
+The key insight: context management is not a one-time setup. It is an ongoing discipline, like memory management in systems programming. The developers who treat it seriously get measurably better results -- longer sessions, higher quality output, lower costs.

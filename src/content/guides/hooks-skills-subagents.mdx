@@ -1,0 +1,259 @@
+---
+title: "Hooks, Skills & Subagents for Token Efficiency"
+description: "Move beyond advisory CLAUDE.md instructions to deterministic hooks, on-demand skills, and multi-model subagent architectures that guarantee token savings."
+author: "Shivansh Fulper"
+tags: ["claude-code", "optimization", "configuration"]
+difficulty: "advanced"
+publishedDate: 2026-03-25
+series:
+  name: "Token Optimization"
+  order: 4
+  total: 4
+---
+
+## Hooks — Deterministic Token Reduction
+
+Unlike CLAUDE.md instructions (advisory — Claude can ignore them), hooks are **deterministic guarantees**. They run every time, without exception.
+
+### All Hook Events
+
+| Event | When | Token-Saving Use Case |
+|-------|------|----------------------|
+| `PreToolUse` | Before tool executes | Filter output, block redundant reads, RTK rewrite |
+| `PostToolUse` | After tool succeeds | Auto-format (prevents re-work tokens) |
+| `Stop` | Claude finishes responding | Verify completeness |
+| `UserPromptSubmit` | Before processing prompt | Inject context, validate |
+| `SessionStart` | Session begins | Load context |
+| `PreCompact` | Before compaction | Save important state |
+| `PostCompact` | After compaction | Restore state |
+
+### Hook Types
+
+| Type | What It Does | Token Impact |
+|------|-------------|-------------|
+| `command` | Run a shell script | Direct — can modify tool inputs/outputs |
+| `prompt` | Single-turn LLM evaluation | Costs ~100-500 tokens per invocation |
+| `agent` | Spawn subagent with tools | Variable cost, separate context |
+| `http` | POST to HTTP endpoint | No direct token cost |
+
+### Essential Token-Saving Hooks
+
+**1. RTK rewrite hook** (installed via `rtk init -g`):
+
+```json
+{
+  "PreToolUse": [{
+    "matcher": "Bash",
+    "hooks": [{
+      "type": "command",
+      "command": "/usr/local/bin/rtk-rewrite.sh",
+      "timeout": 5000
+    }]
+  }]
+}
+```
+
+**2. Test output filter — show failures only:**
+
+```bash
+#!/bin/bash
+# ~/.claude/hooks/filter-test-output.sh
+input=$(cat)
+cmd=$(echo "$input" | jq -r '.tool_input.command // empty')
+[ -z "$cmd" ] && exit 0
+
+if [[ "$cmd" =~ ^(npm\ test|pytest|go\ test|cargo\ test|vitest) ]]; then
+  filtered="$cmd 2>&1 | grep -A 5 -E '(FAIL|ERROR|error:|FAILED)' | head -100"
+  jq -n --arg cmd "$filtered" '{
+    hookSpecificOutput: {
+      hookEventName: "PreToolUse",
+      permissionDecision: "allow",
+      updatedInput: { command: $cmd }
+    }
+  }'
+fi
+```
+
+Expected savings: **90-99%** on test output.
+
+**3. Auto-format on edit** (prevents re-work tokens):
+
+```json
+{
+  "PostToolUse": [{
+    "matcher": "Write|Edit",
+    "hooks": [{
+      "type": "command",
+      "command": "file=$(echo $TOOL_INPUT | jq -r '.file_path // empty'); if [[ \"$file\" == *.ts || \"$file\" == *.tsx ]]; then npx prettier --write \"$file\" 2>/dev/null; fi",
+      "timeout": 10000
+    }]
+  }]
+}
+```
+
+**4. Block --no-verify** (prevents bypass-then-fix cycles):
+
+```json
+{
+  "PreToolUse": [{
+    "matcher": "Bash",
+    "hooks": [{
+      "type": "command",
+      "command": "if echo \"$TOOL_INPUT\" | grep -q '\\-\\-no-verify'; then echo 'BLOCKED' >&2; exit 1; fi"
+    }]
+  }]
+}
+```
+
+### Hook Best Practices
+
+- Keep hooks **fast** (under 10s) — they block Claude
+- Always use `timeout` to prevent hung hooks
+- Use `async: true` for non-blocking hooks (logging, analytics)
+- Matcher patterns: `"Write|Edit"`, `"Bash"`, `""` (match all)
+
+---
+
+## Skills — On-Demand Knowledge
+
+Skills load their context **only when invoked**, not every session. This is fundamentally different from CLAUDE.md (loaded always).
+
+### Move Specialized Instructions to Skills
+
+```yaml
+# .claude/skills/deploy/SKILL.md
+---
+name: deploy
+description: Deploy to staging or production
+disable-model-invocation: true
+user-invocable: true
+allowed-tools: ["Bash"]
+model: sonnet
+context: fork
+---
+
+Deploy the current branch to the specified environment.
+
+1. Run tests: `npm test`
+2. Build: `npm run build`
+3. Deploy: `./deploy.sh $ARGUMENTS`
+4. Verify: `curl -s https://$ARGUMENTS.example.com/health`
+```
+
+### Key Frontmatter for Token Efficiency
+
+| Setting | Effect |
+|---------|--------|
+| `context: fork` | Runs in separate context, doesn't pollute main session |
+| `model: haiku` | Cheaper model for simple skills |
+| `disable-model-invocation: true` | Prevents auto-triggering on every message |
+
+### Dynamic Context Injection
+
+Use backtick commands to inject live data only when the skill runs:
+
+```yaml
+---
+name: pr-summary
+context: fork
+---
+## Context
+- PR diff: !`gh pr diff`
+- Changed files: !`gh pr diff --name-only`
+
+Summarize this pull request concisely.
+```
+
+Far more efficient than having Claude read the diff itself.
+
+### Built-in Skills Worth Knowing
+
+| Skill | What | Token Impact |
+|-------|------|-------------|
+| `/batch <instruction>` | Parallel changes across codebase | Parallelizes work, reduces back-and-forth |
+| `/simplify [focus]` | Three parallel review agents | Runs in subagents, doesn't pollute main |
+| `/loop [interval]` | Recurring tasks | Automated, no manual token spend |
+| `/commit` | Smart commit with conventional format | Efficient, no repeated prompts |
+
+---
+
+## Subagent Architecture for Token Efficiency
+
+### The Model Routing Strategy
+
+```
+Main Session (Opus — $15/M)
+├── Plan architecture decisions
+├── Review subagent results
+└── Make final decisions
+
+Subagent 1: Explore (Haiku — $0.80/M)
+├── Search codebase for patterns
+├── Read 20 files
+└── Return: "Found auth logic in 3 files: ..."
+
+Subagent 2: Implement (Sonnet — $3/M)
+├── Write code based on plan
+├── Run tests
+└── Return: "Implemented rate limiter, all tests pass"
+
+Subagent 3: Review (Sonnet — $3/M)
+├── Review implementation
+├── Check for security issues
+└── Return: "2 issues found: ..."
+```
+
+**Token savings:** Main session stays lean (~20K tokens). Each subagent uses its own 200K context independently. Total cost is lower because exploration (80% of tokens) runs on Haiku.
+
+### Custom Subagent Definitions
+
+```yaml
+# .claude/agents/security-reviewer.md
+---
+name: security-reviewer
+description: Reviews code for security vulnerabilities
+tools: Read, Grep, Glob, Bash
+model: sonnet
+---
+
+You are a senior security engineer. Review code for:
+- Injection vulnerabilities (SQL, XSS, command injection)
+- Authentication and authorization flaws
+- Secrets or credentials in code
+- Insecure data handling
+
+Return: affected files with line numbers, severity, and suggested fixes.
+Keep response under 500 words.
+```
+
+---
+
+## MCP Servers — The Hidden Context Tax
+
+### The Problem
+
+Each MCP server adds tool definitions to your context window — **even when idle**. With 10+ servers, you can lose 30-60K tokens just from tool schemas.
+
+Check your current usage: `/context`
+
+### The Solution
+
+**Rule:** Configure 20-30 MCPs, keep **under 10 enabled** per project.
+
+**Use Tool Search lazy loading:**
+
+```bash
+export ENABLE_TOOL_SEARCH=auto:5
+```
+
+This defers tool schemas when they exceed 5% of context. Tools are still available — they just load on-demand.
+
+### CLI Over MCP for Simple Tools
+
+| Instead of MCP | Use CLI | Tokens Saved |
+|---------------|---------|-------------|
+| GitHub MCP | `gh pr list` | ~2K |
+| Jira MCP | `jira issue view` | ~3K |
+| Docker MCP | `docker ps` | ~1K |
+
+CLI commands are one-shot. MCP schemas persist in context for the entire session.

@@ -1,0 +1,131 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import GuideCard from '../../components/GuideCard.astro';
+import { getCollection } from 'astro:content';
+import { getReadingTime } from '../../utils/reading-time';
+
+const allGuides = await getCollection('guides', ({ data }) => !data.draft);
+const sortedGuides = allGuides.sort((a, b) => b.data.publishedDate.valueOf() - a.data.publishedDate.valueOf());
+
+// Collect all unique tags
+const allTags = [...new Set(sortedGuides.flatMap(g => g.data.tags))].sort();
+---
+
+<BaseLayout title="All Guides" description="Browse all guides on AI coding efficiency, token optimization, and workflow automation.">
+  <section class="pt-12 pb-20 px-6">
+    <div class="full-layout max-w-4xl">
+      <header class="mb-10">
+        <h1 class="font-heading text-3xl font-bold text-text dark:text-text-dark mb-3">All Guides</h1>
+        <p class="text-muted dark:text-muted-dark">
+          {sortedGuides.length} guides on AI coding efficiency, token optimization, and workflow automation.
+        </p>
+      </header>
+
+      <!-- Filters -->
+      <div class="flex flex-wrap gap-2 mb-8" id="filters">
+        <button class="tag-pill filter-btn active-filter" data-filter="all">All</button>
+        <button class="tag-pill filter-btn" data-filter="beginner">🟢 Beginner</button>
+        <button class="tag-pill filter-btn" data-filter="intermediate">🟡 Intermediate</button>
+        <button class="tag-pill filter-btn" data-filter="advanced">🔴 Advanced</button>
+        <span class="mx-2 border-l border-border dark:border-border-dark"></span>
+        {allTags.map(tag => (
+          <button class="tag-pill filter-btn" data-filter={`tag:${tag}`}>{tag}</button>
+        ))}
+      </div>
+
+      <!-- Guide grid -->
+      <div class="grid gap-4 md:grid-cols-2" id="guide-grid">
+        {sortedGuides.map((guide) => (
+          <div class="reveal guide-item" data-difficulty={guide.data.difficulty} data-tags={guide.data.tags.join(',')}>
+            <GuideCard
+              title={guide.data.title}
+              description={guide.data.description}
+              slug={guide.id}
+              difficulty={guide.data.difficulty}
+              tags={guide.data.tags}
+              readingTime={getReadingTime(guide.body || '')}
+              author={guide.data.author}
+              publishedDate={guide.data.publishedDate}
+              featured={guide.data.featured}
+            />
+          </div>
+        ))}
+      </div>
+
+      <!-- Empty state -->
+      <div id="empty-state" class="hidden text-center py-16">
+        <p class="text-muted dark:text-muted-dark text-lg mb-2">No guides match this filter.</p>
+        <button class="font-heading text-sm font-medium text-accent dark:text-accent-dark hover:underline reset-filter">
+          Reset filters
+        </button>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  function initFilters() {
+    const buttons = document.querySelectorAll('.filter-btn');
+    const items = document.querySelectorAll('.guide-item');
+    const emptyState = document.getElementById('empty-state');
+    const grid = document.getElementById('guide-grid');
+
+    function applyFilter(filter: string) {
+      let visible = 0;
+      items.forEach(item => {
+        const el = item as HTMLElement;
+        const difficulty = el.dataset.difficulty || '';
+        const tags = (el.dataset.tags || '').split(',');
+
+        let show = false;
+        if (filter === 'all') show = true;
+        else if (filter.startsWith('tag:')) show = tags.includes(filter.replace('tag:', ''));
+        else show = difficulty === filter;
+
+        el.style.display = show ? '' : 'none';
+        if (show) visible++;
+      });
+
+      emptyState?.classList.toggle('hidden', visible > 0);
+      grid?.classList.toggle('hidden', visible === 0);
+
+      buttons.forEach(btn => {
+        btn.classList.toggle('active-filter', (btn as HTMLElement).dataset.filter === filter);
+      });
+
+      // Sync URL
+      const url = new URL(window.location.href);
+      if (filter === 'all') url.searchParams.delete('filter');
+      else url.searchParams.set('filter', filter);
+      history.replaceState({}, '', url.toString());
+    }
+
+    buttons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        applyFilter((btn as HTMLElement).dataset.filter || 'all');
+      });
+    });
+
+    document.querySelectorAll('.reset-filter').forEach(btn => {
+      btn.addEventListener('click', () => applyFilter('all'));
+    });
+
+    // Apply filter from URL on load
+    const urlFilter = new URLSearchParams(window.location.search).get('filter');
+    if (urlFilter) applyFilter(urlFilter);
+  }
+
+  initFilters();
+  document.addEventListener('astro:after-swap', initFilters);
+</script>
+
+<style>
+  .active-filter {
+    background-color: var(--color-accent) !important;
+    color: white !important;
+  }
+  .dark .active-filter {
+    background-color: var(--color-accent-dark) !important;
+    color: var(--color-cream-dark) !important;
+  }
+</style>

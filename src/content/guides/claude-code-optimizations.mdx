@@ -1,0 +1,277 @@
+---
+title: "Claude Code Deep Optimizations"
+description: "Go beyond basics with .claudeignore, path-specific rules, effort levels, thinking token caps, hidden settings, and smart model selection strategies."
+author: "Shivansh Fulper"
+tags: ["claude-code", "optimization", "configuration"]
+difficulty: "intermediate"
+publishedDate: 2026-03-25
+featured: false
+series:
+  name: "Token Optimization"
+  order: 3
+  total: 4
+---
+
+# Claude Code Deep Optimizations
+
+RTK handles CLI output compression. Context management handles session hygiene. This guide covers everything else -- the configuration-level optimizations that compound over hundreds of sessions.
+
+## .claudeignore -- Exclude Noise Files
+
+Create a `.claudeignore` file in your project root. It works like `.gitignore` -- any matching file is invisible to Claude. This prevents wasted reads on build artifacts, lock files, and generated code.
+
+```
+# Build outputs
+node_modules/
+dist/
+build/
+.next/
+out/
+.nuxt/
+
+# Dependencies
+*.lock
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# Generated files
+*.min.js
+*.min.css
+*.map
+*.d.ts
+
+# Caches
+.git/
+__pycache__/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.eslintcache
+
+# Tests
+coverage/
+.nyc_output/
+
+# Media
+*.png
+*.jpg
+*.svg
+*.ico
+*.woff
+*.woff2
+```
+
+**Expected savings:** 30-60% reduction in file-read tokens. Adding `.next/` alone cuts 30-40% in Next.js projects.[^1]
+
+[^1]: This is pure waste elimination. Claude gains nothing from reading minified CSS, lock files, or compiled output. Every token spent reading `node_modules/` is a token stolen from reasoning.
+
+## CLAUDE.md -- Size Discipline
+
+**Target: under 200 lines / 2,000 tokens.**
+
+Every line of CLAUDE.md loads into every session. If Claude already does something correctly without the instruction, delete it.
+
+### What to Include
+
+- Build, test, lint commands Claude cannot guess
+- Code style rules that differ from language defaults
+- Project-specific architecture decisions
+- Non-obvious gotchas and edge cases
+- Workflow preferences (how you want Claude to work)
+
+### What to Exclude
+
+- Standard language conventions (Claude already knows these)
+- API documentation (link to it instead)
+- File-by-file descriptions (Claude can read the code)
+- Information that changes frequently
+- Tutorials or explanations
+
+**The Boris Cherny rule:** *"For each line, ask: would removing this cause Claude to make mistakes? If not, cut it."*
+
+This is ruthless but correct. A 500-line CLAUDE.md costs ~5,000 tokens every session. If half of those lines are not preventing mistakes, you are burning 2,500 tokens per session for nothing.[^2]
+
+[^2]: At $3/M input tokens on Sonnet, a bloated CLAUDE.md across 20 sessions/day for a team of 10 adds up. More importantly, the quality impact of a cluttered system prompt is real -- the model has to process all that context before reasoning about your actual task.
+
+## Path-Specific Rules -- Load On-Demand
+
+Instead of bloating CLAUDE.md with every rule for every part of the codebase, create focused rule files that load only when relevant.
+
+```markdown
+# .claude/rules/api-rules.md
+---
+paths:
+  - "src/api/**/*.ts"
+---
+# API Development Rules
+- Validate all input with Zod schemas
+- Use dependency injection for database access
+- Return proper HTTP status codes
+```
+
+```markdown
+# .claude/rules/test-rules.md
+---
+paths:
+  - "**/*.test.ts"
+  - "**/*.spec.ts"
+---
+# Test Rules
+- Use vitest, not jest
+- Mock external APIs, never databases
+- Each test file tests one module
+```
+
+These load **only** when matching files are touched. API rules stay out of context when you are writing tests, and test rules stay out when you are writing API code. This keeps your base context lean while still giving Claude the right instructions at the right time.
+
+## Effort Levels -- Think Less for Simple Tasks
+
+```bash
+/effort low     # Simple edits, formatting, rename variable
+/effort medium  # Standard development tasks (default)
+/effort high    # Complex reasoning, architecture decisions
+/effort max     # Critical: security review, deep debugging
+```
+
+**Low effort uses fewer thinking tokens** -- the most expensive token type. Thinking tokens are billed as output tokens at $15/M for Sonnet.[^3]
+
+[^3]: Thinking tokens are where the model "reasons internally" before producing a response. For a simple variable rename, the model does not need 10,000 tokens of internal deliberation. `/effort low` caps this.
+
+Persist a default globally in your settings:
+
+```json
+{ "effortLevel": "medium" }
+```
+
+Drop to `/effort low` for trivial tasks, escalate to `/effort high` or `/effort max` when tackling architecture or security reviews.
+
+## Cap Thinking Tokens
+
+```bash
+export MAX_THINKING_TOKENS=10000
+```
+
+The default can reach tens of thousands of tokens per request. Setting an explicit cap prevents unbounded thinking loops that burn money without improving output.
+
+**When to use a high thinking budget:** Architecture decisions, security reviews, complex refactors.
+
+**When to cap it:** Simple edits, file reads, routine coding.
+
+Pair this with effort levels for fine-grained control. `/effort low` reduces thinking naturally; `MAX_THINKING_TOKENS` is the hard ceiling.
+
+## Hidden Settings That Save Tokens
+
+These settings are not prominently documented but deliver real savings.
+
+### Remove Built-In Git Instructions
+
+```json
+{
+  "includeGitInstructions": false
+}
+```
+
+Saves ~500 tokens per session by removing Claude's built-in git instruction block from the system prompt. Useful when you have custom git workflows or use RTK for git operations.
+
+### Lower MCP Tool Deferral Threshold
+
+```json
+{
+  "env": {
+    "ENABLE_TOOL_SEARCH": "auto:5"
+  }
+}
+```
+
+By default, tools are deferred when they consume more than 10% of context. Setting this to 5% keeps context leaner. Tools are still available -- they just load on-demand when needed rather than sitting in context permanently.
+
+### Auto-Compact at 60%
+
+```json
+{
+  "env": {
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "60"
+  }
+}
+```
+
+Default triggers at ~95%, which is too late. At 60%, compaction happens proactively, ensuring the agent always has room to reason.[^4]
+
+[^4]: Covered in depth in the Context Window Mastery guide. The short version: context quality degrades well before you hit 100%.
+
+### Delete Session Transcripts (CI/Automation Only)
+
+```json
+{
+  "cleanupPeriodDays": 0
+}
+```
+
+For CI/CD pipelines and automation, delete session transcripts on startup. Not recommended for interactive development where you might want session history.
+
+## @file References vs Pasting
+
+Never paste file contents into chat. Use `@file` references instead.
+
+```bash
+# Bad (pastes 500 lines into chat, stays in context forever):
+"Here's the file: [paste entire file]"
+
+# Good (Claude reads on-demand, efficient):
+"Look at @src/auth/middleware.ts and fix the token refresh logic"
+```
+
+`@file` references are token-efficient for two reasons. Claude reads only what it needs. And the file content does not permanently occupy conversation history -- it is read as a tool call, processed, and the full content can be compacted away later.
+
+## Model Selection Strategy
+
+Not every task needs the same model. Choosing wisely is one of the highest-leverage optimizations.
+
+| Model | When to Use | Input Cost | Output Cost |
+|-------|------------|-----------|-------------|
+| **Haiku 4.5** | Exploration, file reading, simple edits, subagent work | $0.80/M | $4.00/M |
+| **Sonnet 4.6** | 90% of coding tasks (default) | $3.00/M | $15.00/M |
+| **Opus 4.6** | Architecture, security, complex debugging, planning | $15.00/M | $75.00/M |
+
+Switch mid-session with `/model sonnet` and check session cost with `/cost`.
+
+**The 80/20 rule:** Use Sonnet for everything except two cases. Complex architecture and security reviews justify Opus. Simple exploration and file reading should go to Haiku subagents.
+
+The cost difference is dramatic. Opus is 19x more expensive than Haiku for input tokens and 19x more expensive for output. For a subagent that reads 50 files to produce a summary, the difference between Opus and Haiku is the difference between $1.50 and $0.08.
+
+## Prompt Caching -- 90% Savings on Repeated Content
+
+Built into Anthropic's API, prompt caching automatically discounts content that does not change between calls.
+
+| Cache State | Cost |
+|-------------|------|
+| Cache write (5-min TTL) | 1.25x base cost |
+| Cache write (1-hour TTL) | 2x base cost |
+| Cache read | **0.1x base cost (90% savings)** |
+| Break-even point | 2 calls |
+
+**Concrete example:** A 100K-token system prompt costs $0.30 per call without caching. With caching, it costs $0.03 per call after the first write. Response time drops from 11.5s to 2.4s.
+
+The practical takeaway: **keep your prompt prefix stable.** Push changing data (user queries, dynamic context) to the suffix. The stable prefix gets cached automatically.
+
+For long-lived agents, use `cacheRetention: "long"` for 1-hour TTL. An 8K system prompt cached across hundreds of messages saves substantially over a day of operation.[^5]
+
+[^5]: Claude Code handles prompt caching automatically. The optimization on your end is structural: keep your CLAUDE.md and system-level instructions stable so the cache hits consistently.
+
+## Compound Savings Reference
+
+These optimizations are not mutually exclusive. They stack.
+
+| Optimization | Savings | Effort |
+|-------------|---------|--------|
+| RTK | 80-89% on CLI output | 1 min install |
+| `.claudeignore` | 30-60% on file reads | 2 min setup |
+| CLAUDE.md discipline | ~2,500 tokens/session | 15 min audit |
+| Path-specific rules | Variable (loads only when needed) | 5 min per rule file |
+| `/effort low` for simple tasks | 50%+ on thinking tokens | Zero (just type it) |
+| `MAX_THINKING_TOKENS` cap | Prevents unbounded thinking | 1 env var |
+| Subagent model routing | 3-19x cheaper exploration | 1 env var |
+| Prompt caching | 90% on repeated content | Automatic |
+
+A fully optimized setup combines all of these. The result: sessions that last 3x longer, cost 70-80% less, and produce higher quality output because the model has more reasoning space available.

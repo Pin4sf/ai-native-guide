@@ -1,0 +1,239 @@
+---
+title: "Token Optimization — The Complete Guide"
+description: "The definitive guide for optimizing token usage across AI coding tools. Covers RTK, context management, compression tools, Claude Code mastery, cost governance, and team-level practices."
+author: "Shivansh Fulper"
+tags: ["rtk", "token-optimization", "context-management", "claude-code"]
+difficulty: "advanced"
+publishedDate: 2026-03-25
+featured: true
+---
+
+## Why Token Optimization Matters
+
+Your AI coding agent has a fixed context window. Every token in it competes for space:
+
+```
+200K token context window (Claude Sonnet 4.6)
+
+┌──────────────────────────────────────────────────────┐
+│ System prompt + CLAUDE.md              (~8-20K)      │
+│ MCP tool schemas (if 10+ servers)      (~5-30K)      │
+│ Conversation history                   (~20-50K)     │
+│ Tool outputs (git, ls, cat, test, etc) (~50-100K) ←  │  THE BIGGEST WASTE
+│ Remaining for reasoning                (~0-37K)      │
+└──────────────────────────────────────────────────────┘
+
+When reasoning space shrinks, output quality DROPS.
+This is called "context rot" — measured degradation past ~50K tokens.
+```
+
+### Three Reasons to Care
+
+**1. Quality degrades with noise.** LLM performance drops as context fills with irrelevant data. JetBrains Research showed that masking tool output yields huge quality improvements without losing the reasoning chain.
+
+**2. Money adds up fast.**
+- Claude Sonnet 4.6: $3/M input, $15/M output tokens
+- A 10-developer team wastes ~$1,750/month on unnecessary tokens
+- A single `git diff` can burn 21,500 tokens. RTK reduces it to 1,259.
+
+**3. Speed — more tokens = slower responses.**
+- 100K token prompt: ~11.5s response time
+- Same prompt with caching: ~2.4s (5x faster)
+
+### Where Tokens Get Wasted
+
+~60 CLI calls in a typical 2-hour session produce ~114,000 tokens of output. **89% is noise:**
+
+| Source | Tokens/Session | % of Total |
+|--------|---------------|------------|
+| File reads (`cat`, `read`) | ~40,000 | 35% |
+| Test output | ~25,000 | 22% |
+| Search results (`grep`, `rg`) | ~16,000 | 14% |
+| Git operations (`diff`, `log`) | ~15,500 | 14% |
+| Build/lint output | ~6,000 | 5% |
+| Directory listings (`ls`, `find`) | ~5,000 | 4% |
+| Other | ~6,500 | 6% |
+
+**After RTK: ~23,900 tokens (-80%).** Same information, 5x less space.
+
+---
+
+## RTK — The Biggest Single Win
+
+RTK (Rust Token Killer) is a single Rust binary with zero dependencies. It sits between your shell commands and the AI agent's context window, intercepting output and stripping noise transparently.
+
+### Install (10 Seconds)
+
+```bash
+# macOS (Homebrew)
+brew install rtk
+
+# Linux/macOS (universal)
+curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/master/install.sh | sh
+
+# Enable for Claude Code (global)
+rtk init -g
+```
+
+### How It Works
+
+```
+You or Claude Code runs: git diff HEAD~3
+                ↓
+RTK PreToolUse hook intercepts the Bash tool call
+                ↓
+Rewrites to: rtk git diff HEAD~3
+                ↓
+RTK runs the real git diff internally
+                ↓
+Applies 4 compression strategies:
+  1. Smart Filtering — strips ANSI codes, blank lines, boilerplate
+  2. Grouping — "components/ (47 .tsx files)" instead of listing all 47
+  3. Truncation — keeps head + tail, cuts redundant middle
+  4. Deduplication — collapses repeats with multiplier "(x5)"
+                ↓
+Claude sees only the meaningful, compressed output
+```
+
+### Real-World Savings
+
+| Command | Raw Tokens | RTK Tokens | Savings |
+|---------|-----------|------------|---------|
+| `cargo test` (262 passing) | 4,823 | 11 | **99.8%** |
+| `git diff HEAD~1` (large) | 21,500 | 1,259 | **94.1%** |
+| `cat src/main.rs` (1,295 lines) | 10,176 | 504 | **95.0%** |
+| `git log --stat -5` | 3,000 | 725 | **75.9%** |
+| `pytest` (33 passing) | 756 | 24 | **96.8%** |
+| **Average** | — | — | **89%** |
+
+### Session-Level Impact
+
+| Metric | Without RTK | With RTK |
+|--------|-------------|----------|
+| Tokens per 30-min session | ~118,000 | ~23,900 |
+| Cost per session (Sonnet) | ~$2.25 | ~$0.68 |
+| Session length before context fills | ~30 min | ~90 min (3x) |
+
+---
+
+## Context Window Management
+
+### The #1 Rule: Treat Context Like RAM
+
+Boris Cherny (creator of Claude Code): *"Context window is the most important resource to manage."*
+
+### Essential Commands
+
+| Command | When | Token Impact |
+|---------|------|-------------|
+| `/clear` | Between unrelated tasks | Frees 100% of conversation context |
+| `/compact` | Phase transitions | Summarizes old context, frees ~60-80% |
+| `/compact Focus on [X]` | When you know what's next | Preserves only relevant context |
+| `/btw [question]` | Quick side questions | **Zero context cost** |
+| `Esc` | Stop mid-action | Prevents wasted tokens on wrong path |
+| `/rewind` | Go back to checkpoint | Restores previous state |
+
+### Subagents — The Secret Weapon
+
+Every subagent gets its **own 200K context window**. The subagent reads 20 files, searches 50 patterns, generates 100K of context — but your main session only receives the summary.
+
+```
+Main Session (Opus — $15/M)
+├── Plan architecture decisions
+├── Review subagent results
+└── Make final decisions
+
+Subagent 1: Explore (Haiku — $0.80/M)
+├── Search codebase for patterns
+├── Read 20 files
+└── Return: "Found auth logic in 3 files: ..."
+
+Subagent 2: Implement (Sonnet — $3/M)
+├── Write code based on plan
+├── Run tests
+└── Return: "Implemented rate limiter, all tests pass"
+```
+
+---
+
+## Claude Code Deep Optimizations
+
+### .claudeignore — Exclude Noise Files
+
+```
+node_modules/
+dist/
+.next/
+*.lock
+*.min.js
+*.d.ts
+coverage/
+__pycache__/
+```
+
+**Expected savings:** 30-60% reduction in file-read tokens.
+
+### CLAUDE.md — Size Discipline
+
+**Target: under 200 lines / 2,000 tokens.** Every line loads into EVERY session. The Boris Cherny rule: *"For each line, ask: would removing this cause Claude to make mistakes? If not, cut it."*
+
+### Model Selection Strategy
+
+| Model | When | Input Cost | Output Cost |
+|-------|------|-----------|-------------|
+| **Haiku 4.5** | Exploration, file reading, subagent work | $0.80/M | $4.00/M |
+| **Sonnet 4.6** | 90% of coding tasks (default) | $3.00/M | $15.00/M |
+| **Opus 4.6** | Architecture, security, complex debugging | $15.00/M | $75.00/M |
+
+---
+
+## Hooks — Deterministic Token Reduction
+
+Unlike CLAUDE.md instructions (advisory), hooks are **deterministic guarantees**. They run every time, without exception.
+
+### RTK Rewrite Hook
+
+```json
+{
+  "PreToolUse": [{
+    "matcher": "Bash",
+    "hooks": [{
+      "type": "command",
+      "command": "/usr/local/bin/rtk-rewrite.sh",
+      "timeout": 5000
+    }]
+  }]
+}
+```
+
+### Test Output Filter — Show Failures Only
+
+Expected savings: 90-99% on test output (only failures reach Claude).
+
+### Auto-Format on Edit
+
+Prevents re-work tokens by auto-formatting after each edit.
+
+---
+
+## Quick-Start Checklist
+
+**Tier 1 — Do Now (5 minutes, 60% savings):**
+- [ ] Install RTK: `brew install rtk && rtk init -g`
+- [ ] Use `/clear` between unrelated tasks
+- [ ] Set auto-compact: `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=60`
+
+**Tier 2 — This Week (30 minutes, +15% savings):**
+- [ ] Create `.claudeignore` with build outputs and lock files
+- [ ] Trim CLAUDE.md to under 200 lines
+- [ ] Use subagents for research and exploration
+
+**Tier 3 — This Sprint (+10% savings):**
+- [ ] Add path-specific rules in `.claude/rules/`
+- [ ] Set up hooks for auto-formatting and test filtering
+- [ ] Configure effort levels for different task types
+
+**Tier 4 — Ongoing (+5% savings):**
+- [ ] Track with `rtk gain --graph`
+- [ ] Run `rtk discover` monthly to find missed optimizations
+- [ ] Share learnings with your team

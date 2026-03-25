@@ -1,0 +1,233 @@
+---
+title: "RTK — Install in 10 Seconds, Save 80% of Tokens"
+description: "The single biggest win for AI coding efficiency. Install RTK, a zero-dependency Rust binary, and immediately cut 80% of wasted tokens from your AI coding sessions."
+author: "Shivansh Fulper"
+tags: ["rtk", "token-optimization", "getting-started"]
+difficulty: "beginner"
+publishedDate: 2026-03-25
+featured: false
+series:
+  name: "Token Optimization"
+  order: 1
+  total: 4
+---
+
+# RTK — Install in 10 Seconds, Save 80% of Tokens
+
+RTK (Rust Token Killer) is a single Rust binary with zero dependencies. It sits between your shell commands and the AI agent's context window, intercepting output and stripping noise transparently. The agent never knows RTK exists. With 11,000+ GitHub stars, active development, and under 10ms overhead per command, it works with Claude Code, Cursor, Gemini CLI, Aider, Codex, Windsurf, and Cline.
+
+## The Problem: Your Context Window Is Mostly Noise
+
+Your AI coding agent has a fixed context window. Every token competes for space, and tool output is the single biggest source of waste.
+
+```
+200K token context window (Claude Sonnet 4.6)
+
+┌──────────────────────────────────────────────────────┐
+│ System prompt + CLAUDE.md              (~8-20K)      │
+│ MCP tool schemas (if 10+ servers)      (~5-30K)      │
+│ Conversation history                   (~20-50K)     │
+│ Tool outputs (git, ls, cat, test, etc) (~50-100K) ←  │ THE BIGGEST WASTE
+│ Remaining for reasoning                (~0-37K)      │
+└──────────────────────────────────────────────────────┘
+
+When reasoning space shrinks, output quality DROPS.
+This is called "context rot" — measured degradation past ~50K tokens.
+```
+
+A typical 2-hour session produces ~114,000 tokens of CLI output. **89% of that is noise** -- progress bars, ANSI codes, passing tests, unchanged diff hunks, full files when only 20 lines matter.[^1]
+
+[^1]: Measured across ~60 CLI calls in a representative coding session. File reads alone account for 35% of total token usage.
+
+**After RTK: ~23,900 tokens. Same information, 5x less space.**
+
+## Install
+
+Pick your method. All take under 10 seconds.
+
+```bash
+# macOS (Homebrew — recommended)
+brew install rtk
+
+# Linux/macOS (universal)
+curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/master/install.sh | sh
+
+# From source (Rust required)
+cargo install --git https://github.com/rtk-ai/rtk
+
+# Verify
+rtk --version
+```
+
+## Enable for Claude Code
+
+One command. Global, permanent.
+
+```bash
+rtk init -g
+```
+
+This installs a `PreToolUse` hook that rewrites all Bash tool calls through RTK. To verify what was installed:
+
+```bash
+rtk init --show
+```
+
+Other agents are supported too:
+
+```bash
+rtk init -g --agent cursor     # Cursor
+rtk init -g --gemini           # Gemini CLI
+rtk init -g --codex            # Codex
+rtk init --agent windsurf      # Windsurf
+rtk init --agent cline         # Cline / Roo Code
+```
+
+To remove completely: `rtk init -g --uninstall`
+
+## How It Works
+
+RTK intercepts Bash tool calls via a hook, rewrites them, runs the real command internally, and compresses the output before the agent sees it.
+
+```
+You or Claude Code runs: git diff HEAD~3
+                ↓
+RTK PreToolUse hook intercepts the Bash tool call
+                ↓
+Rewrites to: rtk git diff HEAD~3
+                ↓
+RTK runs the real git diff internally
+                ↓
+Applies 4 compression strategies:
+  1. Smart Filtering — strips ANSI codes, blank lines, boilerplate
+  2. Grouping — "components/ (47 .tsx files)" instead of listing all 47
+  3. Truncation — keeps head + tail, cuts redundant middle
+  4. Deduplication — collapses repeats with multiplier "(x5)"
+                ↓
+Claude sees only the meaningful, compressed output
+```
+
+One important limitation: RTK only intercepts **Bash tool calls**. Claude Code's built-in tools (Read, Grep, Glob) bypass the hook because they don't go through the shell.[^2]
+
+[^2]: For maximum savings on large files, prefer `cat` (goes through RTK) over the Read tool.
+
+## Real-World Savings
+
+Measured across 2,900+ commands:
+
+| Command | Raw Tokens | RTK Tokens | Savings |
+|---------|-----------|------------|---------|
+| `cargo test` (262 passing) | 4,823 | 11 | **99.8%** |
+| `git diff HEAD~1` (large) | 21,500 | 1,259 | **94.1%** |
+| `cat src/main.rs` (1,295 lines) | 10,176 | 504 | **95.0%** |
+| `git log --stat -5` | 3,000 | 725 | **75.9%** |
+| `pytest` (33 passing) | 756 | 24 | **96.8%** |
+| `npm test` | 6,000 | 600 | **90.0%** |
+| `ruff check` | 3,000 | 600 | **80.0%** |
+| `git status` | 120 | 30 | **75.0%** |
+| **Average** | -- | -- | **89%** |
+
+The session-level impact is dramatic:
+
+| Metric | Without RTK | With RTK |
+|--------|-------------|----------|
+| Tokens per 30-min session | ~118,000 | ~23,900 |
+| Cost per session (Sonnet) | ~$2.25 | ~$0.68 |
+| Session length before context fills | ~30 min | ~90 min (3x) |
+
+## Key Commands to Know
+
+RTK transparently rewrites commands via the hook, but you can also call it directly. Here are the most useful commands.
+
+### File Operations
+
+```bash
+rtk ls -la                     # Compact directory listing
+rtk read file.rs               # Filtered file read (strips noise)
+rtk read file.rs -l aggressive # Signatures ONLY — strips function bodies
+rtk find . -name "*.ts"        # Compact find with tree output
+```
+
+### Git Operations
+
+```bash
+rtk git status                 # Compact status
+rtk git diff                   # Condensed diff (keeps meaningful hunks)
+rtk git diff --staged          # Staged changes, compact
+rtk git log --oneline -20      # Compact log
+rtk git commit -m "msg"        # Returns just "ok abc1234"
+rtk git push                   # Returns just "ok main → origin/main"
+```
+
+### Test Runners (Biggest Savings: 90-99%)
+
+```bash
+rtk test cargo test            # Shows failures ONLY
+rtk test npm test              # Shows failures ONLY
+rtk test pytest                # Shows failures ONLY
+rtk test vitest                # Shows failures ONLY
+```
+
+### Build and Lint (80% Savings)
+
+```bash
+rtk tsc                        # TypeScript errors grouped by file
+rtk ruff check                 # Python linting, compact
+rtk err npm run build          # Errors and warnings ONLY
+```
+
+### Utilities
+
+```bash
+rtk json file.json             # JSON structure WITHOUT values (just shape)
+rtk env                        # Filtered env vars (sensitive values masked)
+rtk -u git status              # Ultra-compact mode (ASCII icons, inline)
+```
+
+## Track Your Savings
+
+RTK logs every command it processes. Use `rtk gain` to see the results.
+
+```bash
+rtk gain                       # Summary statistics
+rtk gain --graph               # ASCII chart (last 30 days)
+rtk gain --daily               # Day-by-day breakdown
+rtk gain --history             # Recent command history
+rtk discover                   # Find commands you're NOT compressing yet
+```
+
+`rtk discover` is especially useful early on. It analyzes your Claude Code history and identifies commands that RTK could be compressing but currently isn't.
+
+## Configuration
+
+RTK works out of the box, but you can customize it via a config file.
+
+- **macOS:** `~/Library/Application Support/rtk/config.toml`
+- **Linux:** `~/.config/rtk/config.toml`
+
+```toml
+# Exclude specific commands from rewriting
+[exclude]
+commands = ["docker-compose"]
+
+# Output caching
+[cache]
+mode = "failures"  # "failures" (default), "always", or "never"
+
+# File rotation limits
+[history]
+max_entries = 10000
+```
+
+## Compound Savings
+
+RTK combines with other optimizations for even bigger wins:
+
+| Combination | Savings |
+|------------|---------|
+| RTK alone | 80-89% |
+| RTK + `.claudeignore` | ~92% |
+| RTK + test filter hook | ~95% on test-heavy sessions |
+| RTK + Serena MCP (code intelligence) | **90.7%** |
+
+The next guide in this series covers context window management -- the other half of the token optimization equation.

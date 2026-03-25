@@ -1,0 +1,112 @@
+---
+title: "What's New in Claude Code (March 2026)"
+description: "The latest features and improvements in Claude Code — from managed settings directories to worktree isolation, MCP elicitation, and 80MB memory savings."
+author: "Shivansh Fulper"
+tags: ["claude-code", "getting-started"]
+difficulty: "beginner"
+publishedDate: 2026-03-25
+---
+
+## Major Features
+
+### Managed Settings Drop-in Directory
+
+Teams can now deploy independent policy fragments via `managed-settings.d/` that merge alphabetically. Separate teams manage their own configurations independently — perfect for large enterprises.
+
+### Transcript Search
+
+Enhanced conversation history navigation:
+- Press `/` in transcript mode (`Ctrl+O`) to search past conversations
+- Navigate matches with `n`/`N` keys
+
+### Worktree Isolation for Agents
+
+Agents now support declarative git worktree isolation:
+
+```yaml
+isolation: worktree
+```
+
+- `--worktree` (`-w`) flag for isolated git worktrees
+- `worktree.sparsePaths` setting for large monorepos (checkout only needed directories)
+
+### MCP Elicitation Support
+
+MCP servers can now request structured input mid-task via interactive dialogs — form fields or browser URLs without interrupting workflow.
+
+### Remote Control Sessions
+
+- Bridge sessions from VS Code to claude.ai/code
+- Continue from browser or phone
+- AI-generated session titles based on first message
+
+---
+
+## Performance Improvements
+
+| Improvement | Impact |
+|------------|--------|
+| Startup memory reduction | **~80MB less** on large repositories (250k files) |
+| Faster `--resume` | **45% faster** on fork-heavy sessions, 100-150MB less peak memory |
+| Line-by-line streaming | Better perceived responsiveness |
+| Plugin startup | Commands, skills, agents now load from disk cache |
+
+---
+
+## Security Enhancements
+
+### Subprocess Credential Scrubbing
+
+```bash
+export CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1
+```
+
+Strips Anthropic and cloud provider credentials from subprocess environments.
+
+### New Environment Variables
+
+| Variable | Purpose |
+|----------|---------|
+| `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1` | Scrub credentials from subprocesses |
+| `CLAUDE_CODE_DISABLE_CRON` | Stop scheduled cron jobs |
+| `ANTHROPIC_CUSTOM_MODEL_OPTION` | Add custom model entries |
+
+---
+
+## Developer Experience
+
+### Plugin Enhancements
+
+- `source: 'settings'` — declare plugins inline in `settings.json`
+- Simplified `/plugin install` command
+- Marketplace supports Azure DevOps and AWS CodeCommit URLs
+- `${CLAUDE_PLUGIN_DATA}` for persistent plugin state
+
+### New Hook Events
+
+| Event | When |
+|-------|------|
+| `CwdChanged` | Directory change notifications |
+| `FileChanged` | File modification events |
+| `ConfigChange` | Configuration changes |
+| `PostCompact` | After conversation compaction |
+| `InstructionsLoaded` | When CLAUDE.md loads |
+
+---
+
+## Model Updates
+
+- **Opus 4.6** defaults to medium effort for Max/Team subscribers
+- **1M context window** now available by default for Opus 4.6
+- **Sonnet 4.6** available with 1M context support
+- **Fast mode** uses the same Opus 4.6 model with faster output — does NOT switch models
+
+---
+
+## Notable Bug Fixes
+
+- Fixed `--resume` dropping parallel tool results
+- Fixed voice mode WebSocket failures from Cloudflare bot detection
+- Fixed diffs timing out on very large files (5-second fallback)
+- Fixed RTL text (Arabic, Hebrew) rendering
+- Fixed sandbox `filesystem.allowWrite` with absolute paths

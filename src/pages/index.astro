@@ -1,0 +1,159 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import GuideCard from '../components/GuideCard.astro';
+import { getCollection } from 'astro:content';
+import { getReadingTime } from '../utils/reading-time';
+
+const allGuides = await getCollection('guides', ({ data }) => !data.draft);
+const sortedGuides = allGuides.sort((a, b) => b.data.publishedDate.valueOf() - a.data.publishedDate.valueOf());
+const featuredGuide = sortedGuides.find(g => g.data.featured);
+const recentGuides = sortedGuides.filter(g => !g.data.featured).slice(0, 6);
+---
+
+<BaseLayout title="AI Native Guide">
+  <!-- Hero -->
+  <section class="pt-20 pb-16 px-6">
+    <div class="full-layout max-w-3xl">
+      <div class="reveal">
+        <p class="font-heading text-sm font-semibold text-accent dark:text-accent-dark uppercase tracking-wider mb-4">
+          Open Knowledge Base
+        </p>
+        <h1 class="font-heading text-4xl md:text-5xl font-bold text-text dark:text-text-dark leading-tight mb-6">
+          Every token should earn<br />its place in the context window.
+        </h1>
+        <p class="text-lg text-muted dark:text-muted-dark leading-relaxed max-w-xl mb-8">
+          A community knowledge base for mastering AI coding tools — from context management to token optimization to workflow automation.
+        </p>
+        <div class="flex flex-wrap gap-3">
+          <a href="/guides" class="inline-flex items-center gap-2 px-5 py-2.5 bg-accent dark:bg-accent-dark text-white dark:text-cream-dark font-heading font-semibold text-sm rounded-lg hover:opacity-90 transition-opacity">
+            Browse Guides
+          </a>
+          <a href="https://github.com/Pin4sf/ai-native-guide" target="_blank" rel="noopener" class="inline-flex items-center gap-2 px-5 py-2.5 border border-border dark:border-border-dark text-text dark:text-text-dark font-heading font-semibold text-sm rounded-lg hover:border-accent dark:hover:border-accent-dark transition-colors">
+            Contribute →
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Featured Guide -->
+  {featuredGuide && (
+    <section class="px-6 pb-12">
+      <div class="full-layout max-w-3xl">
+        <div class="reveal">
+          <GuideCard
+            title={featuredGuide.data.title}
+            description={featuredGuide.data.description}
+            slug={featuredGuide.id}
+            difficulty={featuredGuide.data.difficulty}
+            tags={featuredGuide.data.tags}
+            readingTime={getReadingTime(featuredGuide.body || '')}
+            author={featuredGuide.data.author}
+            publishedDate={featuredGuide.data.publishedDate}
+            featured={true}
+          />
+        </div>
+      </div>
+    </section>
+  )}
+
+  <!-- Quick Start -->
+  <section class="px-6 pb-16">
+    <div class="full-layout max-w-3xl">
+      <div class="reveal bg-surface dark:bg-surface-dark border border-border dark:border-border-dark rounded-xl p-6">
+        <h2 class="font-heading font-bold text-lg text-text dark:text-text-dark mb-1">
+          ⚡ Quick Start — Install RTK in 10 Seconds
+        </h2>
+        <p class="text-sm text-muted dark:text-muted-dark mb-4">
+          The single biggest win for AI coding efficiency. Saves 80% of wasted tokens.
+        </p>
+        <div class="relative group">
+          <pre class="bg-code-bg dark:bg-code-bg-dark border border-border dark:border-border-dark rounded-lg px-4 py-3 font-mono text-sm text-text dark:text-text-dark overflow-x-auto"><code>brew install rtk && rtk init -g</code></pre>
+          <button
+            class="copy-btn absolute top-2 right-2 p-1.5 rounded-md bg-surface dark:bg-surface-dark border border-border dark:border-border-dark opacity-0 group-hover:opacity-100 transition-opacity text-muted dark:text-muted-dark hover:text-accent dark:hover:text-accent-dark"
+            data-code="brew install rtk && rtk init -g"
+            aria-label="Copy to clipboard"
+          >
+            <svg class="w-4 h-4 copy-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" /></svg>
+            <svg class="w-4 h-4 check-icon hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M5 13l4 4L19 7" /></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Recent Guides -->
+  <section class="px-6 pb-20">
+    <div class="full-layout max-w-3xl">
+      <div class="flex items-center justify-between mb-8">
+        <h2 class="font-heading font-bold text-xl text-text dark:text-text-dark">Latest Guides</h2>
+        <a href="/guides" class="font-heading text-sm font-medium text-accent dark:text-accent-dark hover:underline">
+          View all →
+        </a>
+      </div>
+      <div class="grid gap-4 md:grid-cols-2">
+        {recentGuides.map((guide) => (
+          <div class="reveal">
+            <GuideCard
+              title={guide.data.title}
+              description={guide.data.description}
+              slug={guide.id}
+              difficulty={guide.data.difficulty}
+              tags={guide.data.tags}
+              readingTime={getReadingTime(guide.body || '')}
+              author={guide.data.author}
+              publishedDate={guide.data.publishedDate}
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- How to Contribute -->
+  <section class="px-6 pb-20">
+    <div class="full-layout max-w-3xl">
+      <div class="reveal">
+        <h2 class="font-heading font-bold text-xl text-text dark:text-text-dark mb-6">Contribute Your Knowledge</h2>
+        <div class="grid gap-4 md:grid-cols-3">
+          <div class="p-5 border border-border dark:border-border-dark rounded-xl">
+            <p class="font-heading font-bold text-3xl text-accent dark:text-accent-dark mb-2">01</p>
+            <h3 class="font-heading font-semibold text-sm text-text dark:text-text-dark mb-1">Quick Fix</h3>
+            <p class="text-xs text-muted dark:text-muted-dark leading-relaxed">Click "Suggest Edit" on any guide. Fix a typo or add a tip — directly from your browser.</p>
+          </div>
+          <div class="p-5 border border-border dark:border-border-dark rounded-xl">
+            <p class="font-heading font-bold text-3xl text-accent dark:text-accent-dark mb-2">02</p>
+            <h3 class="font-heading font-semibold text-sm text-text dark:text-text-dark mb-1">Write a Guide</h3>
+            <p class="text-xs text-muted dark:text-muted-dark leading-relaxed">Fork the repo, use our template, write your guide in markdown. Submit a PR.</p>
+          </div>
+          <div class="p-5 border border-border dark:border-border-dark rounded-xl">
+            <p class="font-heading font-bold text-3xl text-accent dark:text-accent-dark mb-2">03</p>
+            <h3 class="font-heading font-semibold text-sm text-text dark:text-text-dark mb-1">Request a Topic</h3>
+            <p class="text-xs text-muted dark:text-muted-dark leading-relaxed">Open a GitHub Issue with what you'd like covered. The community picks it up.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  function initCopyButtons() {
+    document.querySelectorAll('.copy-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const code = (btn as HTMLElement).dataset.code || '';
+        await navigator.clipboard.writeText(code);
+        const copyIcon = btn.querySelector('.copy-icon');
+        const checkIcon = btn.querySelector('.check-icon');
+        copyIcon?.classList.add('hidden');
+        checkIcon?.classList.remove('hidden');
+        setTimeout(() => {
+          copyIcon?.classList.remove('hidden');
+          checkIcon?.classList.add('hidden');
+        }, 2000);
+      });
+    });
+  }
+  initCopyButtons();
+  document.addEventListener('astro:after-swap', initCopyButtons);
+</script>

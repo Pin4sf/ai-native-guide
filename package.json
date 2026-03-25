@@ -1,0 +1,33 @@
+{
+  "name": "ai-native-guide",
+  "type": "module",
+  "version": "1.0.0",
+  "description": "Community knowledge base for mastering AI coding tools",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Pin4sf/ai-native-guide.git"
+  },
+  "author": "Shivansh Fulper",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Pin4sf/ai-native-guide/issues"
+  },
+  "homepage": "https://github.com/Pin4sf/ai-native-guide#readme",
+  "dependencies": {
+    "@astrojs/mdx": "^5.0.2",
+    "@astrojs/sitemap": "^3.7.1",
+    "@fontsource/inter": "^5.2.8",
+    "@fontsource/jetbrains-mono": "^5.2.8",
+    "@fontsource/newsreader": "^5.2.10",
+    "@tailwindcss/typography": "^0.5.19",
+    "@tailwindcss/vite": "^4.2.2",
+    "astro": "^6.0.8",
+    "tailwindcss": "^4.2.2"
+  }
+}

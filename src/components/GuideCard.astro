@@ -1,0 +1,51 @@
+---
+interface Props {
+  title: string;
+  description: string;
+  slug: string;
+  difficulty: 'beginner' | 'intermediate' | 'advanced';
+  tags: string[];
+  readingTime: number;
+  author: string;
+  publishedDate: Date;
+  featured?: boolean;
+}
+
+const { title, description, slug, difficulty, tags, readingTime, author, featured } = Astro.props;
+
+const badgeClass = {
+  beginner: 'badge-beginner',
+  intermediate: 'badge-intermediate',
+  advanced: 'badge-advanced',
+}[difficulty];
+---
+
+<a href={`/guides/${slug}`} class:list={["guide-card block group", featured && "border-accent/30 dark:border-accent-dark/30"]}>
+  {featured && (
+    <div class="flex items-center gap-1.5 mb-3">
+      <span class="text-sm">🔥</span>
+      <span class="font-heading text-xs font-semibold text-accent dark:text-accent-dark uppercase tracking-wide">Featured</span>
+    </div>
+  )}
+
+  <div class="flex flex-wrap items-center gap-2 mb-3">
+    <span class:list={["badge", badgeClass]}>{difficulty}</span>
+    {tags.slice(0, 3).map((tag) => (
+      <span class="tag-pill">{tag}</span>
+    ))}
+  </div>
+
+  <h3 class="font-heading font-bold text-lg text-text dark:text-text-dark group-hover:text-accent dark:group-hover:text-accent-dark transition-colors mb-2 leading-snug">
+    {title}
+  </h3>
+
+  <p class="text-sm text-muted dark:text-muted-dark leading-relaxed mb-4 line-clamp-2">
+    {description}
+  </p>
+
+  <div class="flex items-center gap-3 text-xs text-muted dark:text-muted-dark font-heading">
+    <span>👤 {author}</span>
+    <span>·</span>
+    <span>{readingTime} min read</span>
+  </div>
+</a>
