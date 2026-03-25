@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RTK & AI Native Practices — Thursday Demo</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.2.1/dist/reveal.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.2.1/dist/theme/black.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+    :root {
+      --r-background-color: #0A0A0A;
+      --r-main-font: 'Inter', system-ui, sans-serif;
+      --r-heading-font: 'Inter', system-ui, sans-serif;
+      --r-code-font: 'JetBrains Mono', monospace;
+      --r-main-font-size: 32px;
+      --r-heading-color: #F5F5F5;
+      --r-main-color: #D4D4D4;
+      --r-link-color: #60A5FA;
+      --r-heading1-size: 2.2em;
+      --r-heading2-size: 1.5em;
+      --accent: #60A5FA;
+      --warm: #F59E0B;
+      --green: #34D399;
+      --red: #F87171;
+    }
+
+    .reveal { font-weight: 400; }
+    .reveal h1, .reveal h2, .reveal h3 { font-weight: 700; letter-spacing: -0.02em; }
+    .reveal h1 { line-height: 1.1; }
+
+    .reveal .subtitle {
+      color: var(--accent);
+      font-size: 0.55em;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 0.5em;
+    }
+
+    .reveal .big-number {
+      font-size: 4em;
+      font-weight: 800;
+      line-height: 1;
+      background: linear-gradient(135deg, var(--accent), #818CF8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .reveal .big-number.green {
+      background: linear-gradient(135deg, var(--green), #6EE7B7);
+      -webkit-background-clip: text;
+      background-clip: text;
+    }
+
+    .reveal .big-number.warm {
+      background: linear-gradient(135deg, var(--warm), #FBBF24);
+      -webkit-background-clip: text;
+      background-clip: text;
+    }
+
+    .reveal .big-number.red {
+      background: linear-gradient(135deg, var(--red), #FCA5A5);
+      -webkit-background-clip: text;
+      background-clip: text;
+    }
+
+    .reveal .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2rem;
+      margin-top: 1.5rem;
+    }
+
+    .reveal .stat-box {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      padding: 1.5rem;
+      text-align: center;
+    }
+
+    .reveal .stat-value {
+      font-size: 2em;
+      font-weight: 800;
+      color: var(--accent);
+    }
+
+    .reveal .stat-label {
+      font-size: 0.55em;
+      color: #888;
+      margin-top: 0.3em;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .reveal table {
+      margin: 1rem auto;
+      border-collapse: collapse;
+      font-size: 0.65em;
+      width: 90%;
+    }
+
+    .reveal table th {
+      background: rgba(96, 165, 250, 0.12);
+      color: var(--accent);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-size: 0.85em;
+      padding: 0.6em 1em;
+      border-bottom: 2px solid rgba(96, 165, 250, 0.2);
+    }
+
+    .reveal table td {
+      padding: 0.5em 1em;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .reveal table tr:hover td { background: rgba(255,255,255,0.02); }
+
+    .reveal code {
+      font-family: var(--r-code-font);
+      background: rgba(255,255,255,0.08);
+      padding: 0.1em 0.35em;
+      border-radius: 4px;
+      font-size: 0.85em;
+    }
+
+    .reveal pre {
+      width: 90%;
+      margin: 1rem auto;
+      box-shadow: none;
+    }
+
+    .reveal pre code {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 8px;
+      padding: 1em;
+      font-size: 0.75em;
+      line-height: 1.5;
+    }
+
+    .reveal .flow-diagram {
+      font-family: var(--r-code-font);
+      font-size: 0.6em;
+      line-height: 1.5;
+      text-align: left;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      padding: 1.5em;
+      display: inline-block;
+    }
+
+    .reveal .highlight { color: var(--accent); font-weight: 600; }
+    .reveal .highlight-green { color: var(--green); font-weight: 600; }
+    .reveal .highlight-warm { color: var(--warm); font-weight: 600; }
+    .reveal .highlight-red { color: var(--red); font-weight: 600; }
+
+    .reveal .dim { color: #666; }
+
+    .reveal ul { list-style: none; padding: 0; }
+    .reveal ul li {
+      position: relative;
+      padding-left: 1.5em;
+      margin-bottom: 0.5em;
+      font-size: 0.85em;
+    }
+    .reveal ul li::before {
+      content: '→';
+      position: absolute;
+      left: 0;
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .reveal .cta-box {
+      background: linear-gradient(135deg, rgba(96, 165, 250, 0.1), rgba(129, 140, 248, 0.1));
+      border: 1px solid rgba(96, 165, 250, 0.3);
+      border-radius: 16px;
+      padding: 2rem;
+      margin-top: 1rem;
+    }
+
+    .reveal .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      text-align: left;
+    }
+
+    .reveal .tag {
+      display: inline-block;
+      background: rgba(96, 165, 250, 0.15);
+      color: var(--accent);
+      padding: 0.15em 0.5em;
+      border-radius: 4px;
+      font-size: 0.7em;
+      font-weight: 600;
+    }
+
+    .slide-number { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="reveal">
+    <div class="slides">
+
+      <!-- ═══════ SLIDE 1: Title ═══════ -->
+      <section>
+        <p class="subtitle">Thursday Demo · March 27, 2026</p>
+        <h1 style="font-size: 2em;">Becoming<br><span class="highlight">AI Native</span></h1>
+        <p style="color: #888; font-size: 0.7em; margin-top: 1em;">
+          How RTK saves 80% of wasted tokens<br>and best practices for getting maximum output from AI tools
+        </p>
+        <p style="color: #555; font-size: 0.55em; margin-top: 2em;">Shivansh Fulper · EngOps</p>
+      </section>
+
+      <!-- ═══════ SLIDE 2: The Problem ═══════ -->
+      <section>
+        <p class="subtitle">The Problem</p>
+        <h2>Your AI Agent Has <span class="highlight-red">Limited RAM</span></h2>
+        <div class="flow-diagram" style="margin-top: 1em;">
+<span class="dim">200K token context window (Claude Sonnet 4.6)</span>
+
+┌──────────────────────────────────────────────────┐
+│ System prompt + CLAUDE.md        <span class="dim">(~8-20K)</span>      │
+│ MCP tool schemas                 <span class="dim">(~5-30K)</span>      │
+│ Conversation history             <span class="dim">(~20-50K)</span>     │
+│ <span class="highlight-red">Tool outputs (git, ls, cat, test) (~50-100K)</span> │ ← <span class="highlight-red">BIGGEST WASTE</span>
+│ <span class="highlight-green">Remaining for reasoning</span>           <span class="dim">(~0-37K)</span>  │
+└──────────────────────────────────────────────────┘
+
+<span class="highlight-red">When reasoning space shrinks → output quality DROPS</span>
+        </div>
+      </section>
+
+      <!-- ═══════ SLIDE 3: The Numbers ═══════ -->
+      <section>
+        <p class="subtitle">Why This Matters</p>
+        <h2>A Typical 2-Hour Session</h2>
+        <div class="stat-grid">
+          <div class="stat-box">
+            <div class="stat-value" style="color: var(--red);">114K</div>
+            <div class="stat-label">tokens of CLI output</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value" style="color: var(--warm);">89%</div>
+            <div class="stat-label">is noise</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value" style="color: var(--green);">23.9K</div>
+            <div class="stat-label">after RTK (-80%)</div>
+          </div>
+        </div>
+        <p style="font-size: 0.6em; color: #888; margin-top: 1.5em;">
+          A 10-developer team wastes <span class="highlight-warm">~$1,750/month</span> on unnecessary tokens
+        </p>
+      </section>
+
+      <!-- ═══════ SLIDE 4: Where Tokens Waste ═══════ -->
+      <section>
+        <p class="subtitle">Where Tokens Get Wasted</p>
+        <table>
+          <thead>
+            <tr><th>Source</th><th>Tokens/Session</th><th>% of Total</th><th>What's Noise</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>File reads</td><td>~40,000</td><td>35%</td><td>Full files when only 20 lines matter</td></tr>
+            <tr><td>Test output</td><td>~25,000</td><td>22%</td><td>Progress bars, passing tests</td></tr>
+            <tr><td>Search results</td><td>~16,000</td><td>14%</td><td>Duplicate matches</td></tr>
+            <tr><td>Git operations</td><td>~15,500</td><td>14%</td><td>ANSI codes, unchanged hunks</td></tr>
+            <tr><td>Build/lint</td><td>~6,000</td><td>5%</td><td>Boilerplate headers</td></tr>
+            <tr><td>Directory listings</td><td>~5,000</td><td>4%</td><td>Permissions, timestamps</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- ═══════ SLIDE 5: What is RTK ═══════ -->
+      <section>
+        <p class="subtitle">The Solution</p>
+        <h2>RTK — <span class="highlight">Rust Token Killer</span></h2>
+        <div class="two-col" style="margin-top: 1em;">
+          <div>
+            <ul>
+              <li>Single Rust binary, <span class="highlight">zero dependencies</span></li>
+              <li>Less than <span class="highlight">10ms</span> overhead per command</li>
+              <li><span class="highlight">11,000+</span> GitHub stars</li>
+              <li>Works with Claude Code, Cursor, Gemini CLI, Aider, Codex</li>
+              <li>Transparent — your agent never knows it's there</li>
+            </ul>
+          </div>
+          <div class="flow-diagram" style="font-size: 0.55em;">
+Claude runs: <span class="highlight">git diff HEAD~3</span>
+        ↓
+RTK hook <span class="dim">intercepts</span>
+        ↓
+Rewrites to: <span class="highlight-green">rtk git diff HEAD~3</span>
+        ↓
+4 compression strategies:
+  <span class="highlight">1.</span> Smart Filtering
+  <span class="highlight">2.</span> Grouping
+  <span class="highlight">3.</span> Truncation
+  <span class="highlight">4.</span> Deduplication
+        ↓
+Claude sees <span class="highlight-green">only the signal</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════ SLIDE 6: Real Savings ═══════ -->
+      <section>
+        <p class="subtitle">Measured Results</p>
+        <h2>Real-World Savings</h2>
+        <table>
+          <thead>
+            <tr><th>Command</th><th>Raw</th><th>RTK</th><th>Savings</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>cargo test</code> (262 passing)</td><td>4,823</td><td>11</td><td><span class="highlight-green">99.8%</span></td></tr>
+            <tr><td><code>git diff HEAD~1</code></td><td>21,500</td><td>1,259</td><td><span class="highlight-green">94.1%</span></td></tr>
+            <tr><td><code>cat src/main.rs</code> (1,295 lines)</td><td>10,176</td><td>504</td><td><span class="highlight-green">95.0%</span></td></tr>
+            <tr><td><code>pytest</code> (33 passing)</td><td>756</td><td>24</td><td><span class="highlight-green">96.8%</span></td></tr>
+            <tr><td><code>git log --stat -5</code></td><td>3,000</td><td>725</td><td><span class="highlight-green">75.9%</span></td></tr>
+          </tbody>
+        </table>
+        <p style="font-size: 0.65em; margin-top: 1em;">
+          Sessions last <span class="highlight-green">3x longer</span> before context fills · Cost drops from <span class="highlight-red">$2.25</span> to <span class="highlight-green">$0.68</span> per session
+        </p>
+      </section>
+
+      <!-- ═══════ SLIDE 7: Live Demo Data ═══════ -->
+      <section>
+        <p class="subtitle">Live Data — Installed Today</p>
+        <h2>Our RTK Savings <span class="dim">(Day 1)</span></h2>
+        <div class="stat-grid">
+          <div class="stat-box">
+            <div class="stat-value">43</div>
+            <div class="stat-label">commands intercepted</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value" style="color: var(--green);">17.8K</div>
+            <div class="stat-label">tokens saved</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value" style="color: var(--warm);">22.2%</div>
+            <div class="stat-label">overall savings</div>
+          </div>
+        </div>
+        <table style="margin-top: 1em;">
+          <thead>
+            <tr><th>Command</th><th>Count</th><th>Saved</th><th>Avg %</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>rtk read</code></td><td>4</td><td>6.1K</td><td>18.1%</td></tr>
+            <tr><td><code>rtk git show</code></td><td>1</td><td>4.4K</td><td><span class="highlight-green">90.3%</span></td></tr>
+            <tr><td><code>rtk ls</code></td><td>10</td><td>2.3K</td><td><span class="highlight-green">68.1%</span></td></tr>
+            <tr><td><code>rtk git pull</code></td><td>1</td><td>362</td><td><span class="highlight-green">98.4%</span></td></tr>
+          </tbody>
+        </table>
+        <p style="font-size: 0.6em; color: #888; margin-top: 0.5em;">
+          <span class="tag">LIVE DEMO</span> <code style="background:none;">rtk gain</code> — run this now to see real-time data
+        </p>
+      </section>
+
+      <!-- ═══════ SLIDE 8: Install ═══════ -->
+      <section>
+        <p class="subtitle">Get Started</p>
+        <h2>Install RTK in <span class="highlight-green">10 Seconds</span></h2>
+        <pre><code style="font-size: 1.1em; line-height: 2;">
+  # Install
+  brew install rtk
+
+  # Enable for Claude Code (global)
+  rtk init -g
+
+  # Verify
+  rtk --version
+  rtk gain
+        </code></pre>
+        <p style="font-size: 0.65em; color: #888; margin-top: 1em;">
+          Works with: Claude Code · Cursor · Gemini CLI · Aider · Codex · Windsurf · Cline
+        </p>
+      </section>
+
+      <!-- ═══════ SLIDE 9: 5 Best Practices ═══════ -->
+      <section>
+        <p class="subtitle">AI Native Best Practices</p>
+        <h2>5 Rules for <span class="highlight">Maximum Output</span></h2>
+        <div style="text-align: left; max-width: 800px; margin: 1em auto 0;">
+          <ul style="font-size: 0.8em; line-height: 1.8;">
+            <li><span class="highlight">Treat context like RAM</span> — every token costs quality, money, and speed</li>
+            <li><span class="highlight-green"><code>/clear</code> between tasks</span> — the #1 missed optimization. Without it, task 5 has only ~20% context</li>
+            <li><span class="highlight-warm">Use subagents for research</span> — they get their own 200K context window. Route to Haiku ($0.80/M)</li>
+            <li><span class="highlight">Hooks for deterministic savings</span> — RTK hook, test filter, auto-format. Unlike CLAUDE.md, hooks always run</li>
+            <li><span class="highlight-green">Skills over CLAUDE.md bloat</span> — skills load on demand. CLAUDE.md loads every session. Target: under 200 lines</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ═══════ SLIDE 10: Portal CTA ═══════ -->
+      <section>
+        <p class="subtitle">Everything in One Place</p>
+        <h1 style="font-size: 1.8em;">✦ <span class="highlight">AI Native Guide</span></h1>
+        <p style="color: #888; font-size: 0.7em; margin-top: 0.5em; font-style: italic;">
+          "Every token should earn its place in the context window."
+        </p>
+        <div class="cta-box" style="text-align: left; font-size: 0.7em;">
+          <p style="margin-bottom: 0.5em;"><span class="highlight">6 guides</span> live now:</p>
+          <ul style="font-size: 0.9em;">
+            <li>RTK Quick Start <span class="tag">beginner</span></li>
+            <li>Context Window Mastery <span class="tag">intermediate</span></li>
+            <li>Claude Code Deep Optimizations <span class="tag">intermediate</span></li>
+            <li>Hooks, Skills & Subagents <span class="tag">advanced</span></li>
+            <li>Token Optimization — The Complete Guide <span class="tag">featured</span></li>
+            <li>What's New in Claude Code (March 2026) <span class="tag">beginner</span></li>
+          </ul>
+        </div>
+        <p style="font-size: 0.75em; margin-top: 1.5em;">
+          <span class="highlight">ai-native-guide.vercel.app</span>
+        </p>
+        <p style="font-size: 0.55em; color: #888; margin-top: 0.5em;">
+          Open source · Contribute your own guides · Built with Astro
+        </p>
+      </section>
+
+      <!-- ═══════ SLIDE 11: Quick Recap ═══════ -->
+      <section>
+        <p class="subtitle">TL;DR</p>
+        <h2>Your Action Items</h2>
+        <div style="text-align: left; max-width: 700px; margin: 1em auto 0;">
+          <ul style="font-size: 0.85em; line-height: 2;">
+            <li><code>brew install rtk && rtk init -g</code> <span class="dim">(10 seconds)</span></li>
+            <li>Use <code>/clear</code> between unrelated tasks <span class="dim">(free)</span></li>
+            <li>Set <code>CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=60</code> <span class="dim">(one-time)</span></li>
+            <li>Check the portal for deep dives <span class="dim">(5 min reads)</span></li>
+            <li>Contribute your own learnings!</li>
+          </ul>
+        </div>
+        <p style="font-size: 0.7em; margin-top: 2em; color: var(--accent);">
+          Questions?
+        </p>
+      </section>
+
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.2.1/dist/reveal.min.js"></script>
+  <script>
+    Reveal.initialize({
+      hash: true,
+      transition: 'fade',
+      transitionSpeed: 'fast',
+      controlsTutorial: false,
+      progress: true,
+      center: true,
+      width: 1280,
+      height: 720,
+    });
+  </script>
+</body>
+</html>
