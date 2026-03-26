@@ -1,0 +1,1783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Save on AI Coding Tokens — RTK + Best Practices</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <!-- Reveal.js CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.css" />
+
+  <style>
+    /* ============================================================
+       CSS VARIABLES
+       ============================================================ */
+    :root {
+      --bg: #0A0A0A;
+      --text: #F5F5F5;
+      --accent: #60A5FA;
+      --green: #34D399;
+      --red: #F87171;
+      --muted: #6B7280;
+      --code-bg: #111111;
+      --card-bg: #111111;
+      --card-border: rgba(107, 114, 128, 0.15);
+      --row-sep: rgba(107, 114, 128, 0.2);
+    }
+
+    /* ============================================================
+       BACKGROUND — applied to standalone divs, NOT Reveal elements
+       ============================================================ */
+    .reveal-viewport {
+      background: var(--bg);
+    }
+
+    @keyframes meshShift {
+      0%   { background-position: 0% 50%; }
+      33%  { background-position: 100% 0%; }
+      66%  { background-position: 50% 100%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    #bg-mesh {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      background:
+        radial-gradient(ellipse at 15% 50%, rgba(96, 165, 250, 0.18) 0%, transparent 55%),
+        radial-gradient(ellipse at 85% 20%, rgba(167, 139, 250, 0.15) 0%, transparent 55%),
+        radial-gradient(ellipse at 50% 85%, rgba(244, 114, 182, 0.12) 0%, transparent 55%);
+      background-size: 200% 200%;
+      animation: meshShift 25s ease-in-out infinite;
+    }
+
+    #bg-vignette {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.5) 100%);
+      z-index: 0;
+    }
+
+    /* ============================================================
+       BASE STYLES
+       ============================================================ */
+    .reveal {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      font-weight: 400;
+      color: var(--text);
+    }
+
+    .reveal .slides {
+      text-align: center;
+    }
+
+    .reveal .slides section {
+      text-align: center;
+      padding: 48px 60px;
+      box-sizing: border-box;
+    }
+
+    /* ── Graph bars ─────────────────────────────────── */
+    .graph-bar {
+      width: 40px;
+      border-radius: 4px 4px 0 0;
+      transition: all 0.3s ease;
+      position: relative;
+      opacity: 0.85;
+    }
+
+    /* Animated bars: grow from 0 to target height */
+    .graph-bar-animated {
+      height: 0 !important;
+      transition: height 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .graph-bar-animated.bar-visible {
+      height: var(--bar-height) !important;
+    }
+
+    .graph-bar:hover {
+      opacity: 1;
+      transform: scaleY(1.05);
+      filter: brightness(1.3);
+    }
+    .graph-bar:hover::after {
+      content: attr(title);
+      position: absolute;
+      bottom: 105%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #222;
+      color: #F5F5F5;
+      font-size: 0.65rem;
+      padding: 4px 8px;
+      border-radius: 4px;
+      white-space: nowrap;
+      z-index: 10;
+    }
+
+    /* SVG line draw animation */
+    .graph-line {
+      stroke-dasharray: 800;
+      stroke-dashoffset: 800;
+      transition: stroke-dashoffset 1.5s ease-in-out 0.6s;
+    }
+    .graph-line.line-visible {
+      stroke-dashoffset: 0;
+    }
+
+    /* Dots fade in after line draws */
+    .graph-dot {
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    .graph-dot.dot-visible {
+      opacity: 1;
+    }
+
+    /* Hide controls — navigate with keyboard */
+    .reveal .controls { display: none !important; }
+
+    /* ============================================================
+       TYPOGRAPHY
+       ============================================================ */
+    .reveal h1, .reveal h2, .reveal h3 {
+      font-family: 'Inter', system-ui, sans-serif;
+      color: var(--text);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+      margin: 0 0 0.3em 0;
+      text-transform: none;
+    }
+
+    .reveal h1 { font-size: 3.2rem; font-weight: 800; }
+    .reveal h2 { font-size: 2.4rem; }
+    .reveal h3 { font-size: 1.6rem; font-weight: 600; }
+
+    .reveal p {
+      margin: 0.4em 0;
+      line-height: 1.6;
+    }
+
+    .muted  { color: var(--muted); }
+    .accent { color: var(--accent); }
+    .green  { color: var(--green); }
+    .red    { color: var(--red); }
+
+    .small   { font-size: 0.85rem; color: var(--muted); }
+    .smaller { font-size: 0.75rem; color: var(--muted); }
+
+    .large  { font-size: 2rem; font-weight: 600; }
+    .xlarge { font-size: 2.6rem; font-weight: 700; }
+
+    /* ============================================================
+       BIG NUMBERS
+       ============================================================ */
+    .big-number {
+      font-size: 5.5rem;
+      font-weight: 900;
+      letter-spacing: -0.04em;
+      line-height: 1;
+      margin: 0;
+    }
+
+    .mega-number {
+      font-size: 7rem;
+      font-weight: 900;
+      letter-spacing: -0.04em;
+      line-height: 1;
+      margin: 0;
+    }
+
+    /* ============================================================
+       GRADIENT TEXT
+       ============================================================ */
+    .gradient-blue {
+      background: linear-gradient(135deg, #60A5FA 0%, #818CF8 40%, #A78BFA 70%, #F472B6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .gradient-green {
+      background: linear-gradient(135deg, #34D399 0%, #6EE7B7 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* ============================================================
+       SHIMMER ANIMATION
+       ============================================================ */
+    @keyframes shimmer {
+      0%   { background-position: -200% center; }
+      100% { background-position: 200% center; }
+    }
+
+    .shimmer {
+      background: linear-gradient(
+        90deg,
+        #60A5FA 0%,
+        #818CF8 20%,
+        #F472B6 40%,
+        #E0E7FF 50%,
+        #F472B6 60%,
+        #818CF8 80%,
+        #60A5FA 100%
+      );
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: shimmer 3s linear infinite;
+    }
+
+    .shimmer-modal {
+      background: linear-gradient(
+        90deg,
+        #60A5FA 0%,
+        #818CF8 20%,
+        #F472B6 40%,
+        #E0E7FF 50%,
+        #F472B6 60%,
+        #818CF8 80%,
+        #60A5FA 100%
+      );
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: shimmer 3s linear infinite;
+    }
+
+    /* ============================================================
+       AUTO-REVEAL FRAGMENTS
+       ============================================================ */
+    .reveal .fragment.auto-reveal {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .reveal .fragment.auto-reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .reveal .fragment.auto-reveal-scale {
+      opacity: 0;
+      transform: scale(0.85);
+      transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .reveal .fragment.auto-reveal-scale.visible {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    /* ============================================================
+       PULSE ANIMATION
+       ============================================================ */
+    @keyframes subtle-pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+
+    .pulse {
+      animation: subtle-pulse 2.5s ease-in-out infinite;
+    }
+
+    /* ============================================================
+       CODE BLOCKS
+       ============================================================ */
+    .code-block {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9rem;
+      background: var(--code-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 14px 22px;
+      display: inline-block;
+      text-align: left;
+      color: var(--accent);
+      margin: 10px 0;
+      letter-spacing: -0.01em;
+      transition: all 0.3s ease;
+    }
+
+    .code-block:hover {
+      border-color: rgba(96, 165, 250, 0.4);
+      box-shadow: 0 0 20px rgba(96, 165, 250, 0.08);
+      transform: scale(1.02);
+    }
+
+    .code-inline {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      background: var(--code-bg);
+      border-radius: 6px;
+      padding: 3px 10px;
+      color: var(--accent);
+    }
+
+    /* ============================================================
+       CONTEXT BAR VISUALIZATION (Slide 4)
+       ============================================================ */
+    .context-bar-visual {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 6px auto;
+      width: 100%;
+      max-width: 700px;
+    }
+
+    .context-bar-visual .bar-label {
+      text-align: right;
+      font-size: 0.9rem;
+      font-weight: 500;
+      min-width: 200px;
+      color: var(--text);
+    }
+
+    .context-bar-visual .bar {
+      height: 28px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: white;
+      transition: all 0.3s ease;
+    }
+
+    .context-bar-visual .bar:hover {
+      filter: brightness(1.2);
+      transform: scaleY(1.15);
+    }
+
+    .bar-gray  { background: #374151; }
+    .bar-blue  { background: #1E40AF; }
+    .bar-red   { background: #DC2626; }
+    .bar-green { background: #16A34A; }
+
+    /* ============================================================
+       STAT CARDS (Slide 5) — CLICKABLE
+       ============================================================ */
+    .stat-row {
+      display: flex;
+      gap: 40px;
+      justify-content: center;
+      align-items: flex-start;
+      margin-top: 28px;
+    }
+
+    .stat-box {
+      text-align: center;
+      min-width: 200px;
+      padding: 28px 24px;
+      border-radius: 16px;
+      border: 1px solid var(--card-border);
+      background: var(--card-bg);
+      transition: all 0.3s ease;
+    }
+
+    .stat-box.clickable {
+      cursor: pointer;
+    }
+
+    .stat-box.clickable:hover {
+      border-color: rgba(96, 165, 250, 0.5);
+      box-shadow: 0 0 30px rgba(96, 165, 250, 0.15);
+      transform: translateY(-4px);
+    }
+
+    .stat-box .stat-value {
+      font-size: 3.2rem;
+      font-weight: 900;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+    }
+
+    .stat-box .stat-label {
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin-top: 8px;
+      line-height: 1.4;
+    }
+
+    .stat-box .click-hint {
+      font-size: 0.7rem;
+      color: rgba(96, 165, 250, 0.5);
+      margin-top: 10px;
+      letter-spacing: 0.03em;
+    }
+
+    /* ============================================================
+       PIPELINE FLOW (Slide 8)
+       ============================================================ */
+    .pipeline {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      margin: 28px 0;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.82rem;
+    }
+
+    .pipeline-step {
+      background: var(--code-bg);
+      border: 1px solid rgba(107, 114, 128, 0.2);
+      border-radius: 10px;
+      padding: 12px 18px;
+      color: var(--text);
+      transition: all 0.3s ease;
+    }
+
+    .pipeline-step:hover {
+      border-color: rgba(96, 165, 250, 0.4);
+      background: rgba(96, 165, 250, 0.06);
+      transform: translateY(-2px);
+    }
+
+    .pipeline-arrow {
+      color: var(--muted);
+      font-size: 1.2rem;
+    }
+
+    /* ============================================================
+       STRATEGY GRID (Slide 8)
+       ============================================================ */
+    .strategies {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px 36px;
+      margin-top: 24px;
+      max-width: 680px;
+      margin-left: auto;
+      margin-right: auto;
+      text-align: left;
+    }
+
+    .strategy {
+      padding: 14px 16px;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      transition: all 0.3s ease;
+    }
+
+    .strategy:hover {
+      border-color: rgba(96, 165, 250, 0.3);
+      background: rgba(96, 165, 250, 0.04);
+    }
+
+    .strategy .strategy-name {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--accent);
+      margin-bottom: 4px;
+    }
+
+    .strategy .strategy-desc {
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    /* ============================================================
+       CLICKABLE MEGA NUMBER (Slide 10)
+       ============================================================ */
+    .clickable-mega {
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .clickable-mega:hover {
+      transform: scale(1.05);
+      filter: brightness(1.15);
+    }
+
+    /* ============================================================
+       COMPOUND IMPACT TABLE (Slide 11)
+       ============================================================ */
+    .compound-table {
+      border-collapse: collapse;
+      margin: 20px auto;
+      font-size: 0.85rem;
+      max-width: 720px;
+      width: 100%;
+    }
+
+    .compound-table th {
+      color: var(--accent);
+      font-weight: 600;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--row-sep);
+      text-align: left;
+    }
+
+    .compound-table td {
+      padding: 10px 16px;
+      color: var(--text);
+      border-bottom: 1px solid rgba(107, 114, 128, 0.1);
+    }
+
+    .compound-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .compound-table tr td:first-child {
+      font-weight: 600;
+    }
+
+    .compound-table tr td:nth-child(3) {
+      color: var(--green);
+      font-weight: 600;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.82rem;
+    }
+
+    .compound-clickable {
+      cursor: pointer;
+      transition: all 0.3s ease;
+      padding: 24px;
+      border-radius: 16px;
+      border: 1px solid var(--card-border);
+      background: var(--card-bg);
+    }
+
+    .compound-clickable:hover {
+      border-color: rgba(96, 165, 250, 0.4);
+      box-shadow: 0 0 30px rgba(96, 165, 250, 0.1);
+      transform: translateY(-2px);
+    }
+
+    /* ============================================================
+       QUICK WINS (Slide 12)
+       ============================================================ */
+    .win-block {
+      text-align: left;
+      max-width: 680px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--row-sep);
+      border-radius: 8px;
+      transition: all 0.25s ease;
+    }
+
+    .win-block:last-of-type {
+      border-bottom: none;
+    }
+
+    .win-block:hover {
+      background: rgba(96, 165, 250, 0.04);
+    }
+
+    .win-number {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--accent);
+      margin-bottom: 3px;
+    }
+
+    .win-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    .win-detail {
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    /* ============================================================
+       CLEAN TABLE (Slide 12)
+       ============================================================ */
+    .clean-table {
+      border-collapse: collapse;
+      margin: 6px auto;
+      font-size: 0.8rem;
+    }
+
+    .clean-table th {
+      color: var(--muted);
+      font-weight: 500;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 6px 16px;
+      border-bottom: 1px solid var(--row-sep);
+      text-align: left;
+    }
+
+    .clean-table td {
+      padding: 5px 16px;
+      color: var(--text);
+      border: none;
+    }
+
+    .clean-table tr td:first-child {
+      color: var(--accent);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem;
+    }
+
+    /* ============================================================
+       POWER MOVES (Slide 13)
+       ============================================================ */
+    .power-move {
+      text-align: left;
+      max-width: 600px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 14px 18px;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      transition: all 0.3s ease;
+    }
+
+    .power-move:hover {
+      border-color: rgba(96, 165, 250, 0.3);
+      background: rgba(96, 165, 250, 0.04);
+    }
+
+    .power-move .pm-command {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1rem;
+      color: var(--accent);
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .power-move .pm-desc {
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    /* ============================================================
+       QUOTE (Slide 14)
+       ============================================================ */
+    .quote {
+      font-size: 1.7rem;
+      font-weight: 500;
+      line-height: 1.5;
+      font-style: italic;
+      max-width: 650px;
+      margin-left: auto;
+      margin-right: auto;
+      text-align: center;
+      color: var(--text);
+      position: relative;
+    }
+
+    .gradient-line {
+      display: block;
+      width: 80px;
+      height: 3px;
+      background: linear-gradient(90deg, #60A5FA, #A78BFA, #F472B6);
+      margin: 0 auto 28px;
+      border-radius: 2px;
+    }
+
+    /* ============================================================
+       CLOSING LINKS
+       ============================================================ */
+    .close-links {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .close-links p {
+      font-size: 0.95rem;
+      margin: 0;
+    }
+
+    /* ============================================================
+       RTK CLEAN LINES (Slide 7)
+       ============================================================ */
+    .clean-lines {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .clean-lines p {
+      font-size: 1.05rem;
+      color: var(--muted);
+      margin: 0;
+      font-weight: 400;
+    }
+
+    /* ============================================================
+       ATTRIBUTION
+       ============================================================ */
+    .attribution {
+      font-size: 0.75rem;
+      color: var(--muted);
+      font-weight: 400;
+      margin-top: 2em;
+    }
+
+    /* ============================================================
+       SPACER HELPERS
+       ============================================================ */
+    .spacer-sm { height: 12px; }
+    .spacer-md { height: 24px; }
+    .spacer-lg { height: 40px; }
+
+    /* ============================================================
+       MODAL OVERLAY
+       ============================================================ */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      backdrop-filter: blur(8px);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      cursor: pointer;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: #111;
+      border: 1px solid rgba(96,165,250,0.2);
+      border-radius: 16px;
+      padding: 40px;
+      max-width: 700px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+      position: relative;
+      cursor: default;
+      animation: modalIn 0.3s ease;
+    }
+
+    @keyframes modalIn {
+      from { opacity: 0; transform: scale(0.9) translateY(20px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 12px;
+      right: 16px;
+      background: none;
+      border: none;
+      color: #6B7280;
+      font-size: 1.5rem;
+      cursor: pointer;
+      z-index: 1001;
+    }
+
+    .modal-close:hover { color: #F5F5F5; }
+
+    .modal-h2 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #F5F5F5;
+      margin-bottom: 16px;
+      font-family: 'Inter', system-ui, sans-serif;
+    }
+
+    .modal-p {
+      font-size: 0.95rem;
+      color: #9CA3AF;
+      line-height: 1.7;
+      margin-bottom: 12px;
+      font-family: 'Inter', system-ui, sans-serif;
+    }
+
+    .modal-stat {
+      font-size: 2.5rem;
+      font-weight: 800;
+      margin-bottom: 4px;
+      font-family: 'Inter', system-ui, sans-serif;
+    }
+
+    .modal-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      font-size: 0.85rem;
+      font-family: 'Inter', system-ui, sans-serif;
+    }
+
+    .modal-table th {
+      color: #60A5FA;
+      font-weight: 600;
+      padding: 8px 12px;
+      border-bottom: 1px solid #222;
+      text-align: left;
+    }
+
+    .modal-table td {
+      color: #D1D5DB;
+      padding: 8px 12px;
+      border-bottom: 1px solid #1a1a1a;
+    }
+
+    /* Modal scrollbar styling */
+    .modal-content::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .modal-content::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .modal-content::-webkit-scrollbar-thumb {
+      background: rgba(96, 165, 250, 0.2);
+      border-radius: 3px;
+    }
+
+    /* ============================================================
+       REVEAL.JS OVERRIDES
+       ============================================================ */
+    .reveal .slide-background {
+      background: transparent;
+    }
+
+    .reveal .progress {
+      color: var(--accent);
+      height: 3px;
+    }
+
+    .reveal .slides section .fragment {
+      will-change: opacity, transform;
+    }
+
+    .reveal aside.notes {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- MODAL OVERLAY -->
+  <div id="detail-modal" class="modal-overlay" onclick="closeModal()">
+    <div class="modal-content" onclick="event.stopPropagation()">
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+      <div id="modal-body"></div>
+    </div>
+  </div>
+
+  <!-- Background effects — OUTSIDE Reveal.js DOM to avoid layout interference -->
+  <div id="bg-mesh"></div>
+  <div id="bg-vignette"></div>
+
+  <div class="reveal">
+    <div class="slides">
+
+      <!-- =====================================================
+           SLIDE 1 — TITLE
+           ===================================================== -->
+      <section>
+        <h1 style="margin-bottom: 16px;">Save on AI Coding Tokens</h1>
+        <p class="muted" style="font-size: 1.15rem; font-weight: 400;">RTK + Best Practices for AI-Native Development</p>
+        <div class="attribution">Shivansh Fulper &middot; EngOps</div>
+        <aside class="notes">SLIDE 1 — TITLE [10 sec]
+"Thanks everyone. I want to show you something that affects every one of us who uses AI coding tools — and a way to fix it in 10 seconds."
+→ Next slide</aside>
+      </section>
+
+      <!-- =====================================================
+           SLIDE 2 — AGENDA
+           ===================================================== -->
+      <section>
+        <h3 style="color: var(--muted); font-weight: 500; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 28px;">What we'll cover</h3>
+        <div style="max-width: 500px; margin: 0 auto; text-align: left;">
+          <p class="fragment auto-reveal" style="font-size: 1.15rem; padding: 10px 0; border-bottom: 1px solid var(--row-sep);">
+            <span style="color: var(--accent); font-weight: 700; margin-right: 12px;">01</span> The hidden cost of AI coding
+          </p>
+          <p class="fragment auto-reveal" style="font-size: 1.15rem; padding: 10px 0; border-bottom: 1px solid var(--row-sep);">
+            <span style="color: var(--accent); font-weight: 700; margin-right: 12px;">02</span> RTK — live demo + real numbers
+          </p>
+          <p class="fragment auto-reveal" style="font-size: 1.15rem; padding: 10px 0; border-bottom: 1px solid var(--row-sep);">
+            <span style="color: var(--accent); font-weight: 700; margin-right: 12px;">03</span> 5 quick wins for every Atlanian
+          </p>
+          <p class="fragment auto-reveal" style="font-size: 1.15rem; padding: 10px 0;">
+            <span style="color: var(--accent); font-weight: 700; margin-right: 12px;">04</span> Claude Code power features
+          </p>
+        </div>
+        <aside class="notes">SLIDE 2 — AGENDA [20 sec]
+"Quick roadmap for the next 10 minutes."
+[Items auto-reveal — point to each as they appear]
+"First — the hidden cost of AI coding. Where your tokens actually go."
+"Second — a live RTK demo with real numbers from our Mothership repo."
+"Third — five quick wins every Atlanian can adopt today."
+"And fourth — Claude Code features that make a real difference."
+→ Next slide</aside>
+      </section>
+
+      <!-- =====================================================
+           SLIDE 3 — THE HOOK
+           ===================================================== -->
+      <section>
+        <p class="big-number gradient-blue" style="font-size: 7rem; margin-bottom: 20px;">82%</p>
+        <p class="fragment auto-reveal" style="font-size: 1.3rem; font-weight: 400; max-width: 500px; margin: 0 auto;">of CLI tokens your AI agent reads are noise.</p>
+        <aside class="notes">SLIDE 3 — THE HOOK [30 sec]
+[82% appears big. Pause 2 seconds. Then say:]
+"Quick show of hands — who's used Claude Code or Cursor this week?"
+[Pause, let hands go up]
+"We all share something. 82 percent of what our AI agents read from the terminal... is noise."
+[Subtitle auto-reveals]
+"Git output with thousands of unchanged lines. Test progress bars for passing tests. ANSI escape codes. Tokens we pay for that no model ever needed to see."
+"82% — measured on our own Mothership repo."
+→ Next slide</aside>
+      </section>
+
+      <!-- =====================================================
+           SLIDE 4 — CONTEXT = RAM + ACCURACY GRAPH
+           ===================================================== -->
+      <section>
+        <h2 style="font-size: 2.2rem; margin-bottom: 4px;">Your AI has limited RAM.</h2>
+        <p class="fragment auto-reveal" style="font-size: 0.95rem; color: var(--muted); margin-bottom: 20px;">And where information sits in context determines if your AI even finds it.</p>
+
+        <!-- Interactive U-shaped graph (bars) + animated SVG line chart -->
+        <div class="fragment auto-reveal" style="max-width: 620px; margin: 0 auto; cursor: pointer;" onclick="openModal('research')">
+          <p style="font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px;">Accuracy vs Information Position in Context</p>
+
+          <!-- Bars + SVG line overlay -->
+          <div style="position: relative; height: 160px; padding: 0 20px;">
+            <!-- Bars -->
+            <div class="graph-bars-container" style="display: flex; align-items: flex-end; justify-content: center; gap: 4px; height: 100%; position: relative; z-index: 1;">
+              <div class="graph-bar graph-bar-animated" style="--bar-height: 92%; background: var(--green);" title="Position 1 — ~75% accuracy"></div>
+              <div class="graph-bar graph-bar-animated" style="--bar-height: 82%; background: var(--green);" title="Position 2 — ~68%"></div>
+              <div class="graph-bar graph-bar-animated" style="--bar-height: 65%; background: var(--accent);" title="Position 3 — ~55%"></div>
+              <div class="graph-bar graph-bar-animated" style="--bar-height: 50%; background: #F59E0B;" title="Position 4 — ~45%"></div>
+              <div class="graph-bar graph-bar-animated" style="--bar-height: 42%; background: var(--red);" title="Position 5 — ~38%"></div>
+              <div class="graph-bar graph-bar-animated" style="--bar-height: 38%; background: var(--red);" title="Position 6 — ~35% (middle)"></div>
+              <div class="graph-bar graph-bar-animated" style="--bar-height: 42%; background: var(--red);" title="Position 7 — ~38%"></div>
+              <div class="graph-bar graph-bar-animated" style="--bar-height: 52%; background: #F59E0B;" title="Position 8 — ~46%"></div>
+              <div class="graph-bar graph-bar-animated" style="--bar-height: 70%; background: var(--accent);" title="Position 9 — ~60%"></div>
+              <div class="graph-bar graph-bar-animated" style="--bar-height: 88%; background: var(--green);" title="Position 10 — ~72%"></div>
+            </div>
+
+            <!-- SVG line chart overlay -->
+            <svg class="graph-line-svg" viewBox="0 0 580 160" style="position: absolute; top: 0; left: 20px; width: calc(100% - 40px); height: 100%; z-index: 2; pointer-events: none;">
+              <polyline
+                class="graph-line"
+                points="29,13 87,29 145,56 203,80 261,93 319,99 377,93 435,77 493,48 551,19"
+                fill="none"
+                stroke="url(#lineGrad)"
+                stroke-width="2.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+              <!-- Glow dots at each data point -->
+              <circle class="graph-dot" cx="29" cy="13" r="3" fill="#34D399" />
+              <circle class="graph-dot" cx="87" cy="29" r="3" fill="#34D399" />
+              <circle class="graph-dot" cx="145" cy="56" r="3" fill="#60A5FA" />
+              <circle class="graph-dot" cx="203" cy="80" r="3" fill="#F59E0B" />
+              <circle class="graph-dot" cx="261" cy="93" r="3" fill="#F87171" />
+              <circle class="graph-dot" cx="319" cy="99" r="3" fill="#F87171" />
+              <circle class="graph-dot" cx="377" cy="93" r="3" fill="#F87171" />
+              <circle class="graph-dot" cx="435" cy="77" r="3" fill="#F59E0B" />
+              <circle class="graph-dot" cx="493" cy="48" r="3" fill="#60A5FA" />
+              <circle class="graph-dot" cx="551" cy="19" r="3" fill="#34D399" />
+              <defs>
+                <linearGradient id="lineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stop-color="#34D399" />
+                  <stop offset="40%" stop-color="#F87171" />
+                  <stop offset="60%" stop-color="#F87171" />
+                  <stop offset="100%" stop-color="#34D399" />
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; font-size: 0.65rem; color: var(--muted); padding: 4px 20px;">
+            <span style="color: var(--green);">Start</span><span style="color: var(--red);">← Middle (worst) →</span><span style="color: var(--green);">End</span>
+          </div>
+          <p style="font-size: 0.7rem; color: var(--muted); margin-top: 8px;">"Lost in the Middle" — Liu et al., Stanford, 2023 · click for research details</p>
+        </div>
+
+        <p class="fragment auto-reveal" style="font-size: 1.1rem; color: var(--accent); margin-top: 16px;"><span class="code-inline">/context</span> — let me show you live.</p>
+        <aside class="notes">SLIDE 4 — CONTEXT = RAM + GRAPH [45 sec + 1 min terminal]
+"Your AI agent has a fixed context window — think of it as working memory."
+[Graph auto-reveals with animation — bars grow, line draws]
+"This is what Stanford researchers found in the 'Lost in the Middle' paper."
+[Point to the U-shape]
+"Your AI is best at using information at the start and end of context. Anything in the middle — which is exactly where noise pushes your useful information — the model is worst at retrieving."
+"This isn't about context size. Even 1M token models show this pattern. It's about where the signal sits relative to the noise."
+[If someone asks: click graph to open research modal with all 5 studies]
+[/context line auto-reveals]
+"Let me show you what this looks like on our actual repo."
+→ CMD+TAB TO TERMINAL
+→ Run: ccusage [let it scroll, pause at the total: $1,261]
+"Over $1,200 in Claude Code usage in 10 weeks. Real money."
+→ Run: /context [inside Claude Code on Mothership]
+"Look at the breakdown — system prompt 7K, tools 9K, memory 9K. That's 25K tokens before we even start. Messages — that's conversation plus every tool output. Free space — that's what's left for reasoning."
+"I'm on Opus with 1M context. If you're on Sonnet with 200K, this overhead alone is 12% of your budget."
+→ CMD+TAB BACK TO SLIDES → Next slide</aside>
+      </section>
+
+      <!-- =====================================================
+           SLIDE 4 — WHERE TOKENS GO
+           ===================================================== -->
+      <section>
+        <h3 style="color: var(--muted); font-weight: 500; font-size: 1rem; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 24px;">Where Your Tokens Go</h3>
+
+        <div class="context-bar-visual fragment auto-reveal">
+          <span class="bar-label">System prompt + tools</span>
+          <div class="bar bar-gray" style="width: 15%;">~15K</div>
+        </div>
+        <div class="context-bar-visual fragment auto-reveal">
+          <span class="bar-label">Conversation history</span>
+          <div class="bar bar-blue" style="width: 20%;">grows</div>
+        </div>
+        <div class="context-bar-visual fragment auto-reveal">
+          <span class="bar-label" style="color: var(--red); font-weight: 700;">Tool outputs <span style="font-size: 0.75rem; opacity: 0.7;">(git, ls, test)</span></span>
+          <div class="bar bar-red" style="width: 55%;">~100K &middot; THE NOISE</div>
+        </div>
+        <div class="context-bar-visual fragment auto-reveal">
+          <span class="bar-label" style="color: var(--green);">Reasoning space</span>
+          <div class="bar bar-green" style="width: 12%;">shrinks</div>
+        </div>
+
+        <p class="fragment auto-reveal" style="margin-top: 28px; font-size: 1rem; color: var(--muted); max-width: 600px; margin-left: auto; margin-right: auto;">
+          As the session goes on, reasoning space shrinks. Your AI gets dumber.<br>
+          We call this <span style="color: var(--accent); font-weight: 600;">context rot</span>.
+        </p>
+        <aside class="notes">SLIDE 5 — WHERE TOKENS GO [30 sec]
+[Bars auto-reveal one by one — narrate each:]
+"System overhead — small, unavoidable."
+"Conversation — grows as you work."
+[Red bar appears]
+"But look at this. Tool outputs. Every git diff, every ls, every test run. That's the NOISE."
+[Green bar appears]
+"And your AI's reasoning space — shrinks."
+[Context rot text appears]
+"As the session goes on, your AI literally gets dumber. We call this context rot."
+→ Next slide</aside>
+      </section>
+
+      <!-- =====================================================
+           SLIDE 5 — THE COST (CLICKABLE STAT CARDS)
+           ===================================================== -->
+      <section>
+        <div class="stat-row">
+          <div class="stat-box clickable fragment auto-reveal-scale" onclick="openModal('cost')">
+            <div class="stat-value red">$1K+<span style="font-size: 1.5rem;">/mo</span></div>
+            <div class="stat-label">wasted by a 10-dev team</div>
+            <div class="click-hint">click for details</div>
+          </div>
+          <div class="stat-box clickable fragment auto-reveal-scale" onclick="openModal('context-fill')">
+            <div class="stat-value" style="color: var(--accent);">30 min</div>
+            <div class="stat-label">before 200K context fills</div>
+            <div class="click-hint">click for details</div>
+          </div>
+          <div class="stat-box clickable fragment auto-reveal-scale" onclick="openModal('quality')">
+            <div class="stat-value red">Quality&thinsp;&darr;</div>
+            <div class="stat-label">as noise crowds reasoning</div>
+            <div class="click-hint">click for details</div>
+          </div>
+        </div>
+        <aside class="notes">SLIDE 6 — THE COST [30 sec]
+[Three stat cards auto-reveal with scale animation]
+"The cost is real."
+[Point to $1K+] "A 10-dev team wastes over a thousand dollars a month on noise tokens."
+[Point to 30 min] "A 200K context fills up in about 30 minutes of normal CLI usage."
+[Point to Quality] "And output quality degrades as noise crowds out reasoning."
+"Even with the 1M context we all have on Opus — more room just means it takes longer to waste tokens. The noise-to-signal problem remains."
+[If audience asks: click any card for detailed breakdown]
+→ Next slide</aside>
+      </section>
+
+      <!-- =====================================================
+           SLIDE 6 — THE PIVOT
+           ===================================================== -->
+      <section>
+        <p class="xlarge fragment auto-reveal" style="font-weight: 500;">What if you could cut that noise</p>
+        <p class="xlarge fragment auto-reveal gradient-blue" style="font-weight: 800;">by 82%...</p>
+        <p class="xlarge fragment auto-reveal green" style="font-weight: 700;">in 10 seconds?</p>
+        <aside class="notes">SLIDE 7 — THE PIVOT [15 sec]
+[THREE LINES AUTO-REVEAL — DO NOT SPEAK until all three appear]
+[Line 1: "What if you could cut that noise" — WAIT]
+[Line 2: "by 82%..." — WAIT]
+[Line 3: "in 10 seconds?" — NOW speak:]
+"Let me show you how."
+→ Next slide</aside>
+      </section>
+
+      <!-- =====================================================
+           SLIDE 7 — RTK INTRO
+           ===================================================== -->
+      <section>
+        <p class="gradient-blue" style="font-size: 6.5rem; font-weight: 900; letter-spacing: -0.04em; margin-bottom: 4px;">RTK</p>
+        <p class="muted" style="font-size: 1.1rem; margin-bottom: 28px;">Rust Token Killer</p>
+        <div class="clean-lines">
+          <p class="fragment auto-reveal">Single Rust binary. Zero dependencies.</p>
+          <p class="fragment auto-reveal">Less than 10ms overhead per command.</p>
+          <p class="fragment auto-reveal">Claude Code &middot; Cursor &middot; Gemini CLI &middot; Aider</p>
+          <p class="fragment auto-reveal" style="color: var(--accent);">11,000+ GitHub stars</p>
+        </div>
+        <aside class="notes">SLIDE 8 — RTK INTRO [30 sec]
+[RTK title appears big with gradient. Feature lines auto-reveal]
+"This is RTK — Rust Token Killer."
+"A single Rust binary. Zero dependencies. Less than 10 milliseconds overhead per command."
+"Works with Claude Code, Cursor, Gemini CLI, Aider — everything."
+"11,000+ stars on GitHub. Active community."
+"What it does: sits transparently between your terminal and your AI agent. Every bash command output gets intercepted and compressed. Your agent never knows it's there."
+→ Next slide</aside>
+      </section>
+
+      <!-- =====================================================
+           SLIDE 8 — HOW IT WORKS
+           ===================================================== -->
+      <section>
+        <h3 style="color: var(--muted); font-weight: 500; font-size: 1rem; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 20px;">How It Works</h3>
+        <div class="pipeline">
+          <div class="pipeline-step">Claude runs<br><span class="accent">git diff</span></div>
+          <div class="pipeline-arrow">&rarr;</div>
+          <div class="pipeline-step">RTK<br><span class="muted">intercepts</span></div>
+          <div class="pipeline-arrow">&rarr;</div>
+          <div class="pipeline-step">4 strategies<br><span class="muted">compress</span></div>
+          <div class="pipeline-arrow">&rarr;</div>
+          <div class="pipeline-step">Clean output<br><span class="green">&#10003; signal only</span></div>
+        </div>
+        <div class="strategies">
+          <div class="strategy fragment auto-reveal">
+            <div class="strategy-name">Smart Filtering</div>
+            <div class="strategy-desc">ANSI codes, blank lines, decorators</div>
+          </div>
+          <div class="strategy fragment auto-reveal">
+            <div class="strategy-name">Grouping</div>
+            <div class="strategy-desc">"components/ &mdash; 47 files"</div>
+          </div>
+          <div class="strategy fragment auto-reveal">
+            <div class="strategy-name">Truncation</div>
+            <div class="strategy-desc">Keep head + tail, skip middle</div>
+          </div>
+          <div class="strategy fragment auto-reveal">
+            <div class="strategy-name">Deduplication</div>
+            <div class="strategy-desc">Collapse repeated patterns</div>
+          </div>
+        </div>
+        <aside class="notes">SLIDE 9 — HOW IT WORKS [30 sec]
+[Pipeline flow shows. Strategy grid auto-reveals]
+"Here's the flow. Claude runs a bash command — say git diff. RTK's hook intercepts it."
+[Point to each strategy as it appears:]
+"Smart filtering — strips ANSI codes, blank lines, boilerplate headers."
+"Grouping — instead of listing 47 files individually, says 'components/, 47 files'."
+"Truncation — keeps the head and tail, cuts the redundant middle."
+"Deduplication — collapses repeated output into a single line with a count."
+"Claude sees only the meaningful output. Same information, fraction of the tokens."
+→ Next slide</aside>
+      </section>
+
+      <!-- =====================================================
+           SLIDE 9 — DEMO TRANSITION
+           ===================================================== -->
+      <section>
+        <p class="xlarge pulse" style="font-weight: 500;">Let me show you.</p>
+        <aside class="notes">SLIDE 10 — "LET ME SHOW YOU" [5 sec]
+"Let me show you what this actually looks like."
+→ CMD+TAB TO TERMINAL
+
+TERMINAL DEMO 2 — THE MAIN EVENT [2.5 min]
+
+Step 1: rtk gain [THE BIG REVEAL]
+$ rtk gain
+"I installed RTK a couple of days ago on our Mothership repo. Here's what happened."
+[Let output display. Point to key numbers:]
+"480K tokens saved. 82% efficiency. 187 commands intercepted."
+"Look at git branch — 99.7% savings. 23,600 tokens reduced to 70. Same information."
+
+Step 2: rtk cc-economics [THE DOLLAR TRANSLATION]
+$ rtk cc-economics
+"Here's what that means in actual dollars."
+[Show the output]
+"The direct savings are modest — but the REAL value is session quality. My sessions lasted 3x longer, Claude didn't lose context mid-task, and I shipped an entire project in one day."
+
+Step 3: Before/After [THE VISUAL SHOCK]
+$ git diff HEAD~3
+"This is what Claude reads without RTK."
+[Let wall of text scroll for 3-4 seconds, Ctrl+C]
+$ rtk git diff HEAD~3
+"And this is with RTK. Same information. Fraction of the tokens."
+[Let the contrast sink in]
+
+→ CMD+TAB BACK TO SLIDES → Next slide</aside>
+      </section>
+
+      <!-- =====================================================
+           SLIDE 10 — THE REVEAL (CLICKABLE)
+           ===================================================== -->
+      <section>
+        <div class="clickable-mega" onclick="openModal('rtk-savings')">
+          <p class="mega-number shimmer" style="margin-bottom: 16px;">480K</p>
+        </div>
+        <p style="font-size: 1.5rem; font-weight: 400; margin-bottom: 20px;">tokens saved</p>
+        <p class="muted" style="font-size: 0.95rem;">82% efficiency &middot; 187 commands &middot; 2 days of usage</p>
+        <p class="click-hint" style="margin-top: 12px; font-size: 0.7rem; color: rgba(96, 165, 250, 0.5); cursor: pointer;" onclick="openModal('rtk-savings')">click for command breakdown</p>
+        <aside class="notes">SLIDE 11 — 480K REVEAL [15 sec]
+[480K shimmer animation plays. Let it breathe.]
+"Real data. Real sessions. Two days of usage."
+[Pause]
+"But this is just me getting started. Let me show you what it looks like after a few weeks."
+→ Next slide (Louis's data)</aside>
+      </section>
+
+      <!-- =====================================================
+           SLIDE 11 — TEAMMATE DATA (Louis's screenshot)
+           ===================================================== -->
+      <section>
+        <h3 style="color: var(--muted); font-weight: 500; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 20px;">Not just me.</h3>
+        <div style="max-width: 680px; margin: 0 auto;">
+          <img src="louis-rtk.png" alt="Louis's RTK savings: 21.7M tokens saved, 96.1% efficiency" style="width: 100%; border-radius: 12px; border: 1px solid rgba(107, 114, 128, 0.2); box-shadow: 0 8px 32px rgba(0,0,0,0.3);" />
+        </div>
+        <div style="margin-top: 20px;">
+          <p class="fragment auto-reveal" style="font-size: 1.3rem; font-weight: 600; color: var(--text);">
+            <span style="color: var(--green);">21.7M</span> tokens saved &middot; <span style="color: var(--green);">96%</span> efficiency &middot; 1,096 commands
+          </p>
+          <p class="fragment auto-reveal muted" style="font-size: 0.9rem; margin-top: 8px;">
+            Louis on our team — a few weeks of RTK usage on Mothership.
+          </p>
+        </div>
+        <aside class="notes">SLIDE 12 — LOUIS'S DATA [20 sec]
+[Screenshot displays. Numbers auto-reveal below.]
+"This isn't just me. Louis on our team has been using RTK for a few weeks."
+[Point to the numbers]
+"21.7 MILLION tokens saved. 96% efficiency. Over a thousand commands."
+"Look at that top line — a single curl command saved 17.8 million tokens."
+"I have 480K in 2 days. Louis has 21.7 million in a few weeks. This is what compound savings look like."
+→ Next slide</aside>
+      </section>
+
+      <!-- =====================================================
+           SLIDE 12 — COMPOUND IMPACT (CLICKABLE)
+           ===================================================== -->
+      <section>
+        <h3 style="color: var(--muted); font-weight: 500; font-size: 1rem; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px;">The AI-Native Stack</h3>
+        <div class="compound-clickable" onclick="openModal('compound')">
+          <table class="compound-table">
+            <thead>
+              <tr>
+                <th>Level</th>
+                <th>Effort</th>
+                <th>Savings</th>
+                <th>Session Length</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="fragment auto-reveal">
+                <td>RTK only</td>
+                <td>10 seconds</td>
+                <td>60-90%</td>
+                <td>2-3x longer</td>
+              </tr>
+              <tr class="fragment auto-reveal">
+                <td>+ /clear + compact</td>
+                <td>5 minutes</td>
+                <td>~70%</td>
+                <td>3x longer</td>
+              </tr>
+              <tr class="fragment auto-reveal">
+                <td>+ .claudeignore + audit</td>
+                <td>30 minutes</td>
+                <td>~80%</td>
+                <td>3-4x longer</td>
+              </tr>
+              <tr class="fragment auto-reveal">
+                <td style="color: var(--accent);">Full stack</td>
+                <td>1-2 hours</td>
+                <td style="color: #34D399;">80-90%</td>
+                <td style="color: var(--accent);">3-5x + better quality</td>
+              </tr>
+            </tbody>
+          </table>
+          <p style="font-size: 0.7rem; color: rgba(96, 165, 250, 0.5); margin-top: 10px; text-align: center;">click for complementary tools</p>
+        </div>
+        <aside class="notes">SLIDE 13 — COMPOUND IMPACT [25 sec]
+[Table rows auto-reveal]
+"RTK is the biggest single win, but it compounds with other practices."
+[Row 1] "RTK alone — 10 seconds, 60-90% savings on CLI."
+[Row 2] "Add /clear and auto-compact — 5 minutes of setup, 70% overall."
+[Row 3] "Add .claudeignore and a CLAUDE.md audit — 30 minutes, 80%."
+[Row 4] "The full stack — all practices together — 80-90% savings and measurably better output quality."
+[If time/interest: click table for complementary tools modal — Serena, .claudeignore, Headroom]
+→ Next slide</aside>
+      </section>
+
+      <!-- =====================================================
+           SLIDE 12 — 5 QUICK WINS
+           ===================================================== -->
+      <section>
+        <div class="win-block fragment auto-reveal">
+          <div class="win-number">01</div>
+          <div class="win-title">Install RTK</div>
+          <div class="code-block" style="margin-top: 6px; font-size: 0.82rem;">brew install rtk && rtk init -g</div>
+        </div>
+        <div class="win-block fragment auto-reveal">
+          <div class="win-number">02</div>
+          <div class="win-title">/clear + handoff between tasks</div>
+          <div class="win-detail">Write context to a file &rarr; review &rarr; start fresh. Better than /compact because you control what's preserved.</div>
+        </div>
+        <div class="win-block fragment auto-reveal">
+          <div class="win-number">03</div>
+          <div class="win-title">Match model to task</div>
+          <table class="clean-table" style="margin-top: 6px;">
+            <tr>
+              <th>Model</th><th>Cost</th><th>Best for</th>
+            </tr>
+            <tr>
+              <td>Haiku</td><td style="color: var(--green);">$0.80/M</td><td>research</td>
+            </tr>
+            <tr>
+              <td>Sonnet</td><td style="color: var(--text);">$3/M</td><td>code</td>
+            </tr>
+            <tr>
+              <td>Opus</td><td style="color: var(--red);">$15/M</td><td>architecture</td>
+            </tr>
+          </table>
+        </div>
+        <div class="win-block fragment auto-reveal">
+          <div class="win-number">04</div>
+          <div class="win-title">Auto-compact at 60%</div>
+          <div class="code-block" style="margin-top: 6px; font-size: 0.76rem;">CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=60</div>
+        </div>
+        <div class="win-block fragment auto-reveal">
+          <div class="win-number">05</div>
+          <div class="win-title">Subagents for research</div>
+          <div class="win-detail">Each gets its own context window</div>
+        </div>
+        <aside class="notes">SLIDE 14 — 5 QUICK WINS [50 sec — ~10 sec each]
+[Each win auto-reveals. Narrate each one:]
+
+[01] "One — install RTK. brew install rtk, rtk init -g. Ten seconds. Biggest single win."
+
+[02] "Two — use /clear between tasks, or better yet: the handoff technique. Have Claude write everything important to a file. Review it. Start a fresh session. This is what Louis on our team does — you control exactly what carries over."
+
+[03] "Three — match model to task. Haiku at 80 cents per million for research. Sonnet at $3 for everyday coding. Opus at $15 only for architecture and security reviews. Don't use Opus to read files."
+
+[04] "Four — set auto-compact to 60%. The default fires at 95% — way too late. At 60%, your agent proactively compresses before quality degrades."
+
+[05] "Five — use subagents for research. Each subagent gets its own 200K context. It reads 20 files, searches 50 patterns — your main session only gets the summary."
+→ Next slide</aside>
+      </section>
+
+      <!-- =====================================================
+           SLIDE 13 — CLAUDE CODE POWER MOVES
+           ===================================================== -->
+      <section>
+        <h3 style="color: var(--muted); font-weight: 500; font-size: 1rem; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 20px;">Essential Claude Code Features</h3>
+
+        <div class="power-move fragment auto-reveal">
+          <div class="pm-command">/btw</div>
+          <div class="pm-desc">Ask a question for ZERO context cost. Answer stays out of conversation history.</div>
+        </div>
+        <div class="power-move fragment auto-reveal">
+          <div class="pm-command">Esc + Esc &middot; /rewind</div>
+          <div class="pm-desc">Checkpoint management. Selective undo. Roll back without wasting correction tokens.</div>
+        </div>
+        <div class="power-move fragment auto-reveal clickable" onclick="openModal('superpowers')" style="cursor: pointer;">
+          <div class="pm-command">Superpowers Plugin <span style="font-size: 0.6rem; color: var(--accent); margin-left: 6px;">click for details</span></div>
+          <div class="pm-desc">Automated brainstorm &rarr; plan &rarr; git worktree &rarr; subagents. Better context management by default.</div>
+        </div>
+        <div class="power-move fragment auto-reveal">
+          <div class="pm-command">Handoff Technique</div>
+          <div class="pm-desc">Write everything to a file &rarr; review &rarr; start new session. You control what the next session knows.</div>
+        </div>
+        <div class="power-move fragment auto-reveal" style="border-bottom: none;">
+          <div class="pm-command" style="font-size: 0.75rem;">Also explore: /compact Focus on [X] &middot; Get Shit Done plugin &middot; /effort levels</div>
+          <div class="pm-desc">Directed compression, automated workflows, thinking token control.</div>
+        </div>
+
+        <aside class="notes">SLIDE 15 — ESSENTIAL CLAUDE CODE FEATURES [40 sec]
+[Features auto-reveal. Narrate each:]
+
+[/btw] "First — /btw. Ask any side question for zero context cost. The answer shows in an overlay and never enters your conversation history. Perfect for quick lookups mid-task without polluting context."
+
+[Esc+Esc, /rewind] "Esc+Esc opens the checkpoint menu. Selective undo — roll back code, conversation, or both. /rewind goes back to any checkpoint. This saves you from wasting tokens on corrections."
+
+[Superpowers] "The Superpowers plugin. This automates the whole development flow — brainstorm, plan to a file, create an isolated git worktree, dispatch parallel subagents, automated code review. Each step runs in its own context. No accumulated noise from previous phases."
+[IF TIME: click "Superpowers" to open the detailed modal — shows the 5-step flow, why each saves tokens, and install instructions]
+
+[Handoff] "The handoff technique — Louis's approach. Instead of /compact, have Claude write everything to a file. Review it yourself. Start a fresh session pointing at that file. You control what the next session knows."
+
+[Also explore] "Also worth checking out: /compact with focus instructions, the Get Shit Done plugin for automated workflows, and /effort levels to control thinking tokens."
+→ Next slide</aside>
+      </section>
+
+      <!-- =====================================================
+           SLIDE 14 — THE ANTHROPIC QUOTE
+           ===================================================== -->
+      <section>
+        <div class="gradient-line" style="margin: 0 auto 24px;"></div>
+        <p style="font-size: 1.7rem; font-weight: 500; line-height: 1.5; font-style: italic; max-width: 700px; margin: 0 auto; text-align: center; color: var(--text);">&ldquo;A developer with clean context on a weaker model will outperform one with cluttered context on a stronger model.&rdquo;</p>
+        <p class="muted" style="font-size: 0.9rem; margin-top: 16px; text-align: center;">&mdash; Anthropic Engineering, 2026</p>
+        <p class="fragment auto-reveal muted" style="font-size: 0.85rem; margin-top: 12px; max-width: 550px; margin-left: auto; margin-right: auto; text-align: center;">JetBrains Research confirmed: masking tool output from agent history improves output quality without losing the reasoning chain.</p>
+        <div class="spacer-md"></div>
+        <p class="fragment auto-reveal" style="font-size: 1.4rem; color: var(--accent); font-weight: 600; text-align: center;">AI-native means AI-efficient.</p>
+        <aside class="notes">SLIDE 16 — ANTHROPIC QUOTE [20 sec]
+[Gradient line + quote appear. Read it with weight:]
+"I'll leave you with this — from Anthropic's engineering team:"
+[Read the quote slowly, with emphasis:]
+"A developer with clean context on a weaker model... will outperform one with cluttered context on a stronger model."
+[JetBrains text auto-reveals]
+"JetBrains Research independently confirmed the same finding — stripping noise from agent context directly improves output quality."
+[Pause. Let "AI-native means AI-efficient" auto-reveal.]
+→ Next slide</aside>
+      </section>
+
+      <!-- =====================================================
+           SLIDE 15 — THE CLOSE
+           ===================================================== -->
+      <section>
+        <div class="close-links">
+          <p class="fragment auto-reveal"><span class="accent" style="font-weight: 600; font-size: 1.2rem;">ai-native-guide.vercel.app</span></p>
+          <div class="spacer-sm"></div>
+          <p class="fragment auto-reveal"><span class="code-inline" style="font-size: 0.95rem;">brew install rtk && rtk init -g</span></p>
+          <div class="spacer-sm"></div>
+          <p class="fragment auto-reveal muted" style="font-size: 0.85rem;">Full guides + deep dives in the Slack thread</p>
+        </div>
+        <aside class="notes">SLIDE 17 — CLOSE [15 sec]
+[Links auto-reveal]
+"Everything I showed today is documented at ai-native-guide.vercel.app — RTK setup, context management, model selection, Superpowers, all of it."
+"The install command and these quick wins are in the Slack thread right now."
+"Five minutes of setup. Permanent savings."
+[Pause]
+"Thank you."
+→ IMMEDIATELY post the Slack thread message you pre-typed</aside>
+      </section>
+
+    </div><!-- .slides -->
+  </div><!-- .reveal -->
+
+  <!-- Reveal.js -->
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/notes/notes.js"></script>
+
+  <script>
+    // ============================================================
+    // MODAL DATA
+    // ============================================================
+    const modalData = {
+      'cost': '<div class="modal-h2">Token Cost Breakdown</div>' +
+        '<div class="modal-stat" style="color:#F87171;">$1,000+/mo</div>' +
+        '<div class="modal-p">Estimated waste for a 10-developer team</div>' +
+        '<table class="modal-table">' +
+          '<tr><th>Factor</th><th>Value</th></tr>' +
+          '<tr><td>Avg tokens per 30-min session</td><td>~118,000</td></tr>' +
+          '<tr><td>Noise percentage</td><td>82%</td></tr>' +
+          '<tr><td>Wasted tokens per session</td><td>~91,000</td></tr>' +
+          '<tr><td>Sonnet input cost</td><td>$3/M tokens</td></tr>' +
+          '<tr><td>Sessions per dev per day</td><td>~3</td></tr>' +
+          '<tr><td>Working days</td><td>20/month</td></tr>' +
+          '<tr><td>Monthly waste (10 devs)</td><td>$1,638</td></tr>' +
+        '</table>' +
+        '<div class="modal-p" style="color:#60A5FA;">With RTK: reduces to ~$380/mo &mdash; saving $1,260/mo</div>',
+
+      'context-fill': '<div class="modal-h2">Context Fill Timeline</div>' +
+        '<div class="modal-stat" style="color:#60A5FA;">30 min</div>' +
+        '<div class="modal-p">On a 200K context window (Sonnet), typical CLI usage fills the context in ~30 minutes.</div>' +
+        '<table class="modal-table">' +
+          '<tr><th>Time</th><th>Tokens Used</th><th>Reasoning Space</th></tr>' +
+          '<tr><td>0 min</td><td>~25K (overhead)</td><td>175K free</td></tr>' +
+          '<tr><td>10 min</td><td>~65K</td><td>135K free</td></tr>' +
+          '<tr><td>20 min</td><td>~130K</td><td>70K free</td></tr>' +
+          '<tr><td>30 min</td><td>~190K</td><td>10K &mdash; auto-compact triggers</td></tr>' +
+        '</table>' +
+        '<div class="modal-p" style="color:#34D399;">With RTK + /clear: sessions last 90+ minutes before compaction.</div>' +
+        '<div class="modal-p">Note: Opus has 1M context, but context rot still degrades quality after ~50K tokens of noise regardless of window size.</div>',
+
+      'quality': '<div class="modal-h2">Quality Degradation &mdash; Context Rot</div>' +
+        '<div class="modal-stat" style="color:#F87171;">Quality &darr;</div>' +
+        '<div class="modal-p">&ldquo;A developer with a clean, well-structured context on a weaker model will outperform one with a cluttered context on a stronger model.&rdquo; &mdash; Anthropic Engineering</div>' +
+        '<div class="modal-p">JetBrains Research (2025) confirmed: masking tool output from agent history improves output quality without losing the reasoning chain.</div>' +
+        '<div class="modal-p">65% of enterprise AI failures in 2025 were attributed to context drift or memory loss &mdash; not raw context exhaustion.</div>',
+
+      'rtk-savings': '<div class="modal-h2">RTK Savings &mdash; Real Mothership Data</div>' +
+        '<div class="modal-stat shimmer-modal">480K tokens saved</div>' +
+        '<div class="modal-p">82% efficiency across 187 commands. 2 days of usage.</div>' +
+        '<table class="modal-table">' +
+          '<tr><th>Command</th><th>Count</th><th>Saved</th><th>Avg %</th></tr>' +
+          '<tr><td>git branch -a</td><td>2</td><td>47.2K</td><td style="color:#34D399;">99.7%</td></tr>' +
+          '<tr><td>git branch</td><td>1</td><td>23.6K</td><td style="color:#34D399;">99.7%</td></tr>' +
+          '<tr><td>curl requests</td><td>14</td><td>183.5K</td><td style="color:#34D399;">93.4%</td></tr>' +
+          '<tr><td>ls</td><td>37</td><td>7.0K</td><td style="color:#34D399;">74.2%</td></tr>' +
+          '<tr><td>read</td><td>8</td><td>7.2K</td><td>19.0%</td></tr>' +
+        '</table>' +
+        '<div class="modal-p" style="color:#60A5FA;">One git branch -a: 23,600 tokens &rarr; 70 tokens. Same information.</div>',
+
+      'compound': '<div class="modal-h2">Compound Impact &mdash; Stack Your Savings</div>' +
+        '<table class="modal-table">' +
+          '<tr><th>Level</th><th>Effort</th><th>Savings</th><th>Session</th></tr>' +
+          '<tr><td>RTK only</td><td>10 seconds</td><td>60-90% CLI</td><td>2-3x longer</td></tr>' +
+          '<tr><td>+ /clear + auto-compact</td><td>5 minutes</td><td>~70% overall</td><td>3x longer</td></tr>' +
+          '<tr><td>+ .claudeignore + CLAUDE.md audit</td><td>30 minutes</td><td>~80%</td><td>3-4x longer</td></tr>' +
+          '<tr><td>Full stack (all practices)</td><td>1-2 hours</td><td>80-90%</td><td>3-5x + better quality</td></tr>' +
+        '</table>' +
+        '<div class="modal-p">Complementary tools:</div>' +
+        '<div class="modal-p">&bull; <strong style="color:#F5F5F5;">Serena MCP</strong> &mdash; 30x token reduction on code navigation (symbol-level access vs reading whole files)</div>' +
+        '<div class="modal-p">&bull; <strong style="color:#F5F5F5;">.claudeignore</strong> &mdash; 30-60% savings by blocking irrelevant file reads entirely</div>' +
+        '<div class="modal-p">&bull; <strong style="color:#F5F5F5;">Headroom</strong> &mdash; AST-based compression for JSON/structured data in agent pipelines</div>',
+      'superpowers': `
+        <div class="modal-h2">Superpowers Plugin</div>
+        <div class="modal-p" style="color: var(--accent); font-size: 1.05rem; margin-bottom: 16px;">An automated workflow that manages context for you — brainstorm, plan, implement, review — each step in isolation.</div>
+
+        <div class="modal-h2" style="font-size: 1.1rem; margin-top: 16px;">How It Works</div>
+        <table class="modal-table">
+          <tr><th>Step</th><th>What Happens</th><th>Context Benefit</th></tr>
+          <tr><td style="color:#60A5FA;">1. Brainstorm</td><td>Explores requirements with you interactively</td><td>Keeps ideation separate from implementation</td></tr>
+          <tr><td style="color:#60A5FA;">2. Write Plan</td><td>Creates a detailed implementation plan in a markdown file</td><td>Plan persists on disk — survives /clear and compaction</td></tr>
+          <tr><td style="color:#60A5FA;">3. Git Worktree</td><td>Creates an isolated worktree for the implementation</td><td>Parallel work without branch conflicts or context pollution</td></tr>
+          <tr><td style="color:#60A5FA;">4. Subagents</td><td>Dispatches parallel subagents for independent tasks</td><td>Each subagent gets its OWN 200K context — main session stays lean</td></tr>
+          <tr><td style="color:#60A5FA;">5. Code Review</td><td>Automated review against the plan and coding standards</td><td>Review happens in a separate context, catches drift</td></tr>
+        </table>
+
+        <div class="modal-h2" style="font-size: 1.1rem; margin-top: 20px;">Why It Saves Tokens</div>
+        <div class="modal-p">Without Superpowers, a typical workflow looks like: brainstorm in the same session → plan in the same session → implement in the same session → review in the same session. By step 4, your context is full of brainstorming artifacts, abandoned ideas, and early code drafts.</div>
+        <div class="modal-p">Superpowers isolates each phase. The brainstorm output is written to a file. The plan is a document. Implementation happens in a worktree. Review is a separate subagent. <strong style="color: var(--green);">Each step starts with a clean context.</strong></div>
+
+        <div class="modal-h2" style="font-size: 1.1rem; margin-top: 20px;">Key Skills Included</div>
+        <div class="modal-p">&bull; <strong style="color:#F5F5F5;">/brainstorm</strong> — explore before you build</div>
+        <div class="modal-p">&bull; <strong style="color:#F5F5F5;">/write-plan</strong> — structured implementation plan to a file</div>
+        <div class="modal-p">&bull; <strong style="color:#F5F5F5;">/execute-plan</strong> — step-by-step implementation with review checkpoints</div>
+        <div class="modal-p">&bull; <strong style="color:#F5F5F5;">Dispatching parallel agents</strong> — independent tasks run simultaneously in separate contexts</div>
+        <div class="modal-p">&bull; <strong style="color:#F5F5F5;">Code review agent</strong> — automated review against plan and standards</div>
+
+        <div class="modal-p" style="margin-top: 16px; color: var(--green);">Install: search for "superpowers" in the Claude Code plugin marketplace, or run /plugin install superpowers</div>
+      `,
+      'research': `
+        <div class="modal-h2">Research: Why Context Quality Matters</div>
+        <div class="modal-p" style="color: var(--accent); font-weight: 600; font-size: 1.1rem; margin-bottom: 16px;">"Signal-to-noise ratio matters more than context window size."</div>
+
+        <div class="modal-h2" style="font-size: 1.1rem; margin-top: 20px;">Peer-Reviewed Research</div>
+        <table class="modal-table">
+          <tr><th>Study</th><th>Finding</th><th>Status</th></tr>
+          <tr><td style="color:#60A5FA;">Lost in the Middle<br><span style="color:#6B7280;font-size:0.75rem;">Liu et al., Stanford/Meta AI, 2023</span></td><td>LLMs show a U-shaped accuracy curve: best at the start and end of context, worst in the middle. Accuracy drops ~20+ percentage points at middle positions. Effect worsens with more documents.</td><td style="color:#34D399;">Peer-reviewed</td></tr>
+          <tr><td style="color:#60A5FA;">Needle in a Haystack<br><span style="color:#6B7280;font-size:0.75rem;">Kamradt, 2024</span></td><td>Modern models achieve near-perfect retrieval across full context windows. However, NIAH tests only measure simple retrieval — not reasoning quality, which degrades earlier.</td><td style="color:#34D399;">Community benchmark</td></tr>
+          <tr><td style="color:#60A5FA;">Observation Masking<br><span style="color:#6B7280;font-size:0.75rem;">JetBrains Research, 2025</span></td><td>Selectively compressing tool output while preserving reasoning history yields significant quality improvements in SE agents. Tool output is the dominant context consumer.</td><td style="color:#34D399;">Published research</td></tr>
+        </table>
+
+        <div class="modal-h2" style="font-size: 1.1rem; margin-top: 20px;">Industry Findings</div>
+        <table class="modal-table">
+          <tr><th>Source</th><th>Finding</th></tr>
+          <tr><td style="color:#60A5FA;">Anthropic Engineering</td><td>"A developer with clean context on a weaker model will outperform one with cluttered context on a stronger model." Context quality beats model strength.</td></tr>
+          <tr><td style="color:#60A5FA;">Manus AI, 2025</td><td>60% of coding agent time is spent searching through context, not coding. Larger windows without optimization make this worse.</td></tr>
+        </table>
+
+        <div class="modal-p" style="margin-top: 16px; color: #34D399;"><strong>Key insight:</strong> Noise doesn't just waste tokens — it actively harms output quality by pushing useful information into positions where the model is weakest at retrieving it. This holds regardless of context window size.</div>
+      `
+    };
+
+    // ============================================================
+    // MODAL FUNCTIONS
+    // ============================================================
+    function openModal(key) {
+      var modal = document.getElementById('detail-modal');
+      var body = document.getElementById('modal-body');
+      if (modalData[key]) {
+        body.innerHTML = modalData[key];
+        modal.classList.add('active');
+      }
+    }
+
+    function closeModal() {
+      document.getElementById('detail-modal').classList.remove('active');
+    }
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        var modal = document.getElementById('detail-modal');
+        if (modal.classList.contains('active')) {
+          e.stopPropagation();
+          e.preventDefault();
+          closeModal();
+        }
+      }
+    });
+
+    // ============================================================
+    // REVEAL.JS INITIALIZATION
+    // ============================================================
+    Reveal.initialize({
+      width: 1280,
+      height: 720,
+      margin: 0.04,
+      hash: true,
+      transition: 'fade',
+      transitionSpeed: 'fast',
+      backgroundTransition: 'fade',
+      center: true,
+      controls: false,
+      progress: true,
+      slideNumber: false,
+      disableLayout: false,
+      fragments: false,
+      plugins: [ RevealNotes ]
+    });
+
+    // ============================================================
+    // AUTO-REVEAL FRAGMENT SYSTEM
+    // ============================================================
+    function autoRevealFragments(slide) {
+      var fragments = slide.querySelectorAll('.fragment.auto-reveal, .fragment.auto-reveal-scale');
+      for (var i = 0; i < fragments.length; i++) {
+        (function(frag, delay) {
+          setTimeout(function() {
+            frag.classList.add('visible');
+          }, delay);
+        })(fragments[i], 600 + (i * 500));
+      }
+    }
+
+    function resetFragments(slide) {
+      var fragments = slide.querySelectorAll('.fragment.auto-reveal, .fragment.auto-reveal-scale');
+      for (var i = 0; i < fragments.length; i++) {
+        fragments[i].classList.remove('visible');
+      }
+    }
+
+    Reveal.on('slidechanged', function(event) {
+      var allSlides = document.querySelectorAll('.reveal .slides section');
+      for (var i = 0; i < allSlides.length; i++) {
+        if (allSlides[i] !== event.currentSlide) {
+          resetFragments(allSlides[i]);
+        }
+      }
+      autoRevealFragments(event.currentSlide);
+      animateGraph(event.currentSlide);
+    });
+
+    Reveal.on('ready', function(event) {
+      autoRevealFragments(event.currentSlide);
+      animateGraph(event.currentSlide);
+    });
+
+    // Graph animation — bars grow + line draws when slide is reached
+    function animateGraph(slide) {
+      // Animate bars
+      var bars = slide.querySelectorAll('.graph-bar-animated');
+      bars.forEach(function(bar, i) {
+        bar.classList.remove('bar-visible');
+        setTimeout(function() { bar.classList.add('bar-visible'); }, 800 + (i * 80));
+      });
+      // Animate SVG line
+      var line = slide.querySelector('.graph-line');
+      if (line) {
+        line.classList.remove('line-visible');
+        setTimeout(function() { line.classList.add('line-visible'); }, 1000);
+      }
+      // Animate dots after line
+      var dots = slide.querySelectorAll('.graph-dot');
+      dots.forEach(function(dot, i) {
+        dot.classList.remove('dot-visible');
+        setTimeout(function() { dot.classList.add('dot-visible'); }, 2200 + (i * 100));
+      });
+    }
+
+    // ============================================================
+    // INTERACTIVE DOT GRID BACKGROUND WITH MOUSE REPEL
+    // ============================================================
+    (function() {
+      var canvas = document.createElement('canvas');
+      canvas.id = 'bg-canvas';
+      canvas.style.cssText = 'position:fixed;inset:0;z-index:0;pointer-events:none;';
+      document.body.appendChild(canvas);
+      var ctx = canvas.getContext('2d');
+
+      var mouse = { x: -1000, y: -1000 };
+      document.addEventListener('mousemove', function(e) {
+        mouse.x = e.clientX;
+        mouse.y = e.clientY;
+      });
+
+      var dots = [];
+      var spacing = 35;
+
+      function buildGrid() {
+        dots = [];
+        var cols = Math.ceil(canvas.width / spacing) + 2;
+        var rows = Math.ceil(canvas.height / spacing) + 2;
+        for (var i = 0; i < cols; i++) {
+          for (var j = 0; j < rows; j++) {
+            dots.push({
+              ox: i * spacing,
+              oy: j * spacing,
+              x: i * spacing,
+              y: j * spacing
+            });
+          }
+        }
+      }
+
+      function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        buildGrid();
+      }
+
+      window.addEventListener('resize', resize);
+      resize();
+
+      function animate() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        var repelRadius = 120;
+        var repelStrength = 40;
+
+        for (var i = 0, len = dots.length; i < len; i++) {
+          var dot = dots[i];
+          var dx = dot.ox - mouse.x;
+          var dy = dot.oy - mouse.y;
+          var dist = Math.sqrt(dx * dx + dy * dy);
+
+          if (dist < repelRadius) {
+            var force = (1 - dist / repelRadius) * repelStrength;
+            var angle = Math.atan2(dy, dx);
+            dot.x += (dot.ox + Math.cos(angle) * force - dot.x) * 0.15;
+            dot.y += (dot.oy + Math.sin(angle) * force - dot.y) * 0.15;
+          } else {
+            dot.x += (dot.ox - dot.x) * 0.1;
+            dot.y += (dot.oy - dot.y) * 0.1;
+          }
+
+          var proximity = Math.min(1, dist / repelRadius);
+          var nearCursor = dist < repelRadius;
+          var alpha = nearCursor ? 0.12 + (1 - proximity) * 0.25 : 0.07;
+          var size  = nearCursor ? 1.5 + (1 - proximity) * 1.5 : 1;
+          var r     = nearCursor ? 96 + (1 - proximity) * 80 : 96;
+          var g     = nearCursor ? 165 + (1 - proximity) * 20 : 165;
+          var b     = 250;
+
+          ctx.beginPath();
+          ctx.arc(dot.x, dot.y, size, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(' + (r|0) + ',' + (g|0) + ',' + b + ',' + alpha.toFixed(3) + ')';
+          ctx.fill();
+        }
+
+        requestAnimationFrame(animate);
+      }
+
+      animate();
+    })();
+  </script>
+</body>
+</html>
